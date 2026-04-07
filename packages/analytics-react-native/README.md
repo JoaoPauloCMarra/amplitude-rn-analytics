@@ -9,7 +9,7 @@ custom `storageProvider` hook so apps can inject persistent storage.
 ## Install
 
 ```sh
-bun add amplitude-rn-analytics
+npm install amplitude-rn-analytics
 ```
 
 ## Default storage behavior
@@ -18,7 +18,10 @@ If you call `init()` without a `storageProvider`, the SDK uses built-in
 in-memory storage.
 
 That is fine for tests, development, and apps that do not need persistence
-across restarts. It is not the recommended production setup if you rely on:
+across restarts.
+
+Do not ship the memory fallback as your production storage strategy if you rely
+on:
 
 - persisted unsent event queues
 - device and session continuity across app restarts
@@ -96,3 +99,18 @@ this fork.
 The public analytics API stays close to the upstream React Native SDK. The
 main behavioral difference is the default storage backend: this fork defaults
 to memory instead of AsyncStorage.
+
+## Fork lineage
+
+- upstream base: `@amplitude/analytics-react-native@1.5.52`
+- fork release: `amplitude-rn-analytics@1.5.53`
+
+## Validation matrix
+
+| Surface | Verified |
+| --- | --- |
+| Upstream analytics API shape | close to `@amplitude/analytics-react-native@1.5.52` |
+| Package build | `bob build` |
+| TypeScript | `tsc -p ./tsconfig.json` |
+| Built-in memory storage | regression tests |
+| Custom `storageProvider` | regression tests |

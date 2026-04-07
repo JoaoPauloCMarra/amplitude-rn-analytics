@@ -203,6 +203,27 @@ describe('config', () => {
         offline: false,
       });
     });
+
+    test('should keep a custom storage provider in the resolved config', async () => {
+      const storageProvider = {
+        isEnabled: async () => true,
+        get: async () => [],
+        set: async () => undefined,
+        remove: async () => undefined,
+        reset: async () => undefined,
+        getRaw: async () => undefined,
+      };
+      const localStorageConstructor = jest.spyOn(LocalStorageModule, 'LocalStorage');
+      const cookieStorage = new core.MemoryStorage<UserSession>();
+
+      const config = await Config.useReactNativeConfig(API_KEY, {
+        cookieStorage,
+        storageProvider,
+      });
+
+      expect(config.storageProvider).toBe(storageProvider);
+      expect(localStorageConstructor).not.toHaveBeenCalled();
+    });
   });
 
   describe('createCookieStorage', () => {
