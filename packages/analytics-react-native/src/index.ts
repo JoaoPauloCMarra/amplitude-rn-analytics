@@ -24,6 +24,7 @@ export const {
 } = client;
 
 export { Revenue, Identify } from '@amplitude/analytics-core';
+export { LocalStorage, MemoryStorage } from './storage/local-storage';
 
 // Export types to maintain backward compatibility with `analytics-types`.
 // In the next major version, only export customer-facing types to reduce the public API surface.

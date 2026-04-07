@@ -281,7 +281,7 @@ export const createEventsStorage = async (overrides?: ReactNativeOptions): Promi
   // If storageProperty is explicitly undefined like `{ storageProperty: undefined }`
   // then storageProvider is undefined
   // If storageProvider is implicitly undefined like `{ }`
-  // then storageProvider is LocalStorage
+  // then storageProvider uses the built-in memory storage
   // Otherwise storageProvider is overriden
   if (!hasStorageProviderProperty || overrides.storageProvider) {
     for (const storage of [overrides?.storageProvider, new LocalStorage<Event[]>()]) {

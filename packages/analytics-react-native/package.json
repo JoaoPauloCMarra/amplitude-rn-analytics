@@ -1,7 +1,7 @@
 {
-  "name": "@amplitude/analytics-react-native",
-  "version": "1.5.52",
-  "description": "Official React Native SDK",
+  "name": "amplitude-rn-analytics",
+  "version": "1.0.0",
+  "description": "Storage-agnostic React Native analytics SDK for Amplitude services",
   "keywords": [
     "analytics",
     "amplitude",
@@ -9,8 +9,8 @@
     "ios",
     "android"
   ],
-  "author": "Amplitude Inc",
-  "homepage": "https://github.com/amplitude/Amplitude-TypeScript",
+  "author": "Joao Paulo C. Marra",
+  "homepage": "https://github.com/JoaoPauloCMarra/amplitude-rn-analytics",
   "license": "MIT",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -22,7 +22,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/amplitude/Amplitude-TypeScript.git"
+    "url": "git+https://github.com/JoaoPauloCMarra/amplitude-rn-analytics.git"
   },
   "scripts": {
     "build": "bob build",
@@ -55,12 +55,11 @@
     "!**/test"
   ],
   "bugs": {
-    "url": "https://github.com/amplitude/Amplitude-TypeScript/issues"
+    "url": "https://github.com/JoaoPauloCMarra/amplitude-rn-analytics/issues"
   },
   "dependencies": {
     "@amplitude/analytics-core": "2.41.5",
     "@amplitude/ua-parser-js": "^0.7.31",
-    "@react-native-async-storage/async-storage": "^1.17.11",
     "tslib": "^2.4.1"
   },
   "devDependencies": {

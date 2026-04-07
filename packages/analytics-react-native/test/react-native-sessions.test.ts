@@ -2,7 +2,7 @@ import { AmplitudeReactNative } from '../src/react-native-client';
 import * as core from '@amplitude/analytics-core';
 import { Status, UserSession, Event } from '@amplitude/analytics-core';
 import { isWeb } from '../src/utils/platform';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LocalStorage } from '../src/storage/local-storage';
 
 describe('react-native-session', () => {
   const API_KEY = 'API_KEY';
@@ -17,7 +17,7 @@ describe('react-native-session', () => {
     // due to jest env, cookies are always preset and needs to be cleaned up
     document.cookie = 'AMP_API_KEY=null; expires=-1';
     if (!isWeb()) {
-      await AsyncStorage.clear();
+      await new LocalStorage().reset();
     }
   });
 

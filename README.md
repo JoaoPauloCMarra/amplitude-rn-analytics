@@ -1,64 +1,35 @@
-<p align="center">
-  <a href="https://amplitude.com" target="_blank" align="center">
-    <img src="https://static.amplitude.com/lightning/46c85bfd91905de8047f1ee65c7c93d6fa9ee6ea/static/media/amplitude-logo-with-text.4fb9e463.svg" width="280">
-  </a>
-  <br />
-</p>
+# amplitude-rn-analytics
 
-# Amplitude-TypeScript
+Fork of Amplitude's React Native analytics SDK with no hard dependency on
+`@react-native-async-storage/async-storage`.
 
-This is Amplitude's latest version of the JavaScript SDK, written in TypeScript.
-## Development
+## Published package
 
-If you plan on contributing to this SDK, here's how you can start.
+The publishable package lives at:
 
-1. Clone GitHub repo
-2. Install dependencies
-3. Build and link packages
+- `packages/analytics-react-native`
 
+Its package name is:
+
+- `amplitude-rn-analytics`
+
+## What changed
+
+- removed AsyncStorage from package dependencies
+- replaced the default storage backend with shared in-memory storage
+- kept `storageProvider` so apps can inject persistent storage
+- updated package metadata and README for standalone publishing
+
+## Recommended production setup
+
+Use a custom persistent storage provider. For Goodword, the intended backend is
+`react-native-nitro-storage`.
+
+## Build and test
+
+```sh
+pnpm install
+pnpm --filter amplitude-rn-analytics typecheck
+pnpm --filter amplitude-rn-analytics test
+pnpm --filter amplitude-rn-analytics build
 ```
-$ git clone git@github.com:amplitude/Amplitude-TypeScript.git
-$ nvm use
-$ pnpm --version
-$ pnpm install
-$ pnpm build
-```
-
-Check our guidelines for repo contributions on [CONTRIBUTING.md](https://github.com/amplitude/Amplitude-TypeScript/blob/main/CONTRIBUTING.md).
-
-## Projects
-
-* Amplitude SDK for Web
-  * [@amplitude/analytics-browser@^2](https://github.com/amplitude/Amplitude-TypeScript/tree/main/packages/analytics-browser)
-  * [@amplitude/analytics-browser@^1](https://github.com/amplitude/Amplitude-TypeScript/tree/v1.x/packages/analytics-browser)
-  * [Installation and Quick Start](https://www.docs.developers.amplitude.com/data/sdks/browser-2/)
-* Amplitude SDK for Node.js
-  * [@amplitude/analytics-node](https://github.com/amplitude/Amplitude-TypeScript/tree/main/packages/analytics-node)
-  * [Installation and Quick Start](https://www.docs.developers.amplitude.com/data/sdks/typescript-node/)
-* Amplitude SDK for React Native
-  * [@amplitude/analytics-react-native](https://github.com/amplitude/Amplitude-TypeScript/tree/main/packages/analytics-react-native)
-  * [Installation and Quick Start](https://www.docs.developers.amplitude.com/data/sdks/typescript-react-native/)
-
-## Testing Locally
-
-To test the SDK locally, you can run our test server.
-
-Before running the test server for the first time, copy ".env.example" as ".env" and replace the variables in '.env' with your own variables.
-
-Run `pnpm dev` to run the test server. It will open up to the home page automatically in your default browser.
-
-For more details visit the [Test Server README.md](/test-server/README.md)
-
-### Troubleshooting
-
-If you ever see an error that looks like this while running an Nx command (pnpm test, pnpm build, etc...):
-
-```
- Lerna (powered by Nx)   DB transaction operation error: SqliteFailure(Error { code: SystemIoFailure, extended_code: 522 }, Some("disk I/O error"))
- ```
-
-Run `npx nx reset` and try again
-
-## Documentation
-
-See our [Typescript SDK](https://amplitude.github.io/Amplitude-TypeScript/) Reference for a list and description of all available SDK methods.

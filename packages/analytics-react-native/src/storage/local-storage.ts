@@ -1,7 +1,8 @@
 import { Storage, getGlobalScope } from '@amplitude/analytics-core';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export class LocalStorage<T> implements Storage<T> {
+export class MemoryStorage<T> implements Storage<T> {
+  private static memoryStorage = new Map<string, unknown>();
+
   async isEnabled(): Promise<boolean> {
     /* istanbul ignore if */
     if (!getGlobalScope()) {
@@ -9,7 +10,7 @@ export class LocalStorage<T> implements Storage<T> {
     }
 
     const random = String(Date.now());
-    const testStorage = new LocalStorage<string>();
+    const testStorage = new MemoryStorage<string>();
     const testKey = 'AMP_TEST';
     try {
       await testStorage.set(testKey, random);
@@ -38,12 +39,16 @@ export class LocalStorage<T> implements Storage<T> {
   }
 
   async getRaw(key: string): Promise<string | undefined> {
-    return (await AsyncStorage.getItem(key)) || undefined;
+    const value = MemoryStorage.memoryStorage.get(key);
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+    return value;
   }
 
   async set(key: string, value: T): Promise<void> {
     try {
-      await AsyncStorage.setItem(key, JSON.stringify(value));
+      MemoryStorage.memoryStorage.set(key, JSON.stringify(value));
     } catch {
       //
     }
@@ -51,7 +56,7 @@ export class LocalStorage<T> implements Storage<T> {
 
   async remove(key: string): Promise<void> {
     try {
-      await AsyncStorage.removeItem(key);
+      MemoryStorage.memoryStorage.delete(key);
     } catch {
       //
     }
@@ -59,9 +64,11 @@ export class LocalStorage<T> implements Storage<T> {
 
   async reset(): Promise<void> {
     try {
-      await AsyncStorage.clear();
+      MemoryStorage.memoryStorage.clear();
     } catch {
       //
     }
   }
 }
+
+export class LocalStorage<T> extends MemoryStorage<T> {}

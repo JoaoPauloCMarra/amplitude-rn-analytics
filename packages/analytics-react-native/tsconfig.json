@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "@amplitude/analytics-react-native": ["./src/index"]
+      "amplitude-rn-analytics": ["./src/index"]
     },
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,

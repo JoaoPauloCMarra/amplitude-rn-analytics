@@ -9,8 +9,8 @@ import {
   getCookieName as getStorageKey,
 } from '@amplitude/analytics-core';
 import { isWeb } from '../src/utils/platform';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Config from '../src/config';
+import { LocalStorage } from '../src/storage/local-storage';
 
 describe('react-native-client', () => {
   const API_KEY = 'API_KEY';
@@ -27,7 +27,7 @@ describe('react-native-client', () => {
     // due to jest env, cookies are always preset and needs to be cleaned up
     document.cookie = 'AMP_API_KEY=null; expires=-1';
     if (!isWeb()) {
-      await AsyncStorage.clear();
+      await new LocalStorage().reset();
     }
   });
 
