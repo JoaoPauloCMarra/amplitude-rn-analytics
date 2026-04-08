@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.5.54] (2026-04-08)
+
+### Bug Fixes
+
+* recover `init()` after setup failures and remove transient app-state listeners on late init errors
+* fall back to runtime platform metadata when native context lookup fails
+
+### Maintenance
+
+* export `InMemoryStorage` alongside the compatibility `LocalStorage` alias
+* tighten package-local test and typecheck execution
+* point React Native examples at the forked package
+
 ## [1.5.52](https://github.com/amplitude/Amplitude-TypeScript/compare/@amplitude/analytics-react-native@1.5.51...@amplitude/analytics-react-native@1.5.52) (2026-03-26)
 
 

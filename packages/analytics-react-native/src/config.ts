@@ -63,7 +63,7 @@ export class ReactNativeConfig extends Config implements IReactNativeConfig {
   trackingSessionEvents: boolean;
   trackingOptions: ReactNativeTrackingOptions;
 
-  // NOTE: These protected properties are used to cache values from async storage
+  // NOTE: These protected properties cache user session values in the configured session storage
   protected _deviceId?: string;
   protected _lastEventId?: number;
   protected _lastEventTime?: number;

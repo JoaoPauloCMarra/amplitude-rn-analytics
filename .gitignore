@@ -21,6 +21,15 @@ yarn-error.log*
 # during the build process and can be easily recreated.
 *.d.ts
 *.d.ts.map
+packages/analytics-react-native/src/**/*.js
+packages/analytics-react-native/src/**/*.js.map
+packages/analytics-react-native/src/**/*.d.ts
+packages/analytics-react-native/src/**/*.d.ts.map
+!packages/analytics-react-native/src/typings/**/*.d.ts
+packages/analytics-react-native/test/**/*.js
+packages/analytics-react-native/test/**/*.js.map
+packages/analytics-react-native/test/**/*.d.ts
+packages/analytics-react-native/test/**/*.d.ts.map
 .env
 .env.*
 !.env.example

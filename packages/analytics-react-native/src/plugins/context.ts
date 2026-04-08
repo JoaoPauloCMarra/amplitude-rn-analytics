@@ -8,10 +8,21 @@ import {
 } from '@amplitude/analytics-core';
 import UAParser from '@amplitude/ua-parser-js';
 import { VERSION } from '../version';
-import { NativeModules } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 
 const BROWSER_PLATFORM = 'Web';
 const IP_ADDRESS = '$remote';
+
+function getNativePlatformName(): string {
+  switch (Platform.OS) {
+    case 'ios':
+      return 'iOS';
+    case 'android':
+      return 'Android';
+    default:
+      return BROWSER_PLATFORM;
+  }
+}
 
 type NativeContext = {
   version: string;
@@ -62,19 +73,35 @@ export class Context implements BeforePlugin {
     return Promise.resolve(undefined);
   }
 
+  private async getNativeContext(): Promise<NativeContext | undefined> {
+    if (!this.nativeModule) {
+      return undefined;
+    }
+
+    try {
+      return await this.nativeModule.getApplicationContext(this.config.trackingOptions);
+    } catch (error) {
+      this.config.loggerProvider?.error(`Failed to load native application context: ${String(error)}`);
+      return undefined;
+    }
+  }
+
   async execute(context: Event): Promise<Event> {
     const time = new Date().getTime();
-    const nativeContext = await this.nativeModule?.getApplicationContext(this.config.trackingOptions);
+    const nativeContext = await this.getNativeContext();
+    const isWebPlatform = Platform.OS === 'web';
+    const fallbackPlatform = getNativePlatformName();
     const appVersion = this.config.appVersion || nativeContext?.version;
-    const platform = nativeContext?.platform || BROWSER_PLATFORM;
+    const platform = nativeContext?.platform || fallbackPlatform;
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
-    const osName = nativeContext?.osName || this.uaResult.browser.name;
+    const osName = nativeContext?.osName || (isWebPlatform ? this.uaResult.browser.name : fallbackPlatform);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
-    const osVersion = nativeContext?.osVersion || this.uaResult.browser.version;
+    const osVersion = nativeContext?.osVersion || (isWebPlatform ? this.uaResult.browser.version : undefined);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
-    const deviceVendor = nativeContext?.deviceManufacturer || this.uaResult.device.vendor;
+    const deviceVendor = nativeContext?.deviceManufacturer || (isWebPlatform ? this.uaResult.device.vendor : undefined);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
-    const deviceModel = nativeContext?.deviceModel || this.uaResult.device.model || this.uaResult.os.name;
+    const deviceModel =
+      nativeContext?.deviceModel || (isWebPlatform ? this.uaResult.device.model || this.uaResult.os.name : undefined);
     const language = nativeContext?.language || getLanguage();
     const country = nativeContext?.country;
     const carrier = nativeContext?.carrier;

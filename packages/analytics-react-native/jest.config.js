@@ -7,11 +7,12 @@ module.exports = {
   rootDir: '.',
   preset: 'react-native',
   testEnvironment: 'jsdom',
+  testMatch: ['<rootDir>/test/**/*.test.ts'],
   modulePathIgnorePatterns: [
     "<rootDir>/lib/"
   ],
   transformIgnorePatterns: [
-    'node_modules/(?!(.pnpm|@react-native|react-native|@segment)/)',
+    'node_modules/(?!(.pnpm|.bun|@react-native|react-native|@segment)/)',
   ],
   // TODO: get full coverage
   coverageThreshold: {

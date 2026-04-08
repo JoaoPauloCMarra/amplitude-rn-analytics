@@ -8,6 +8,7 @@ import {
   getAnalyticsConnector,
   getCookieName as getStorageKey,
 } from '@amplitude/analytics-core';
+import { AppState } from 'react-native';
 import { isWeb } from '../src/utils/platform';
 import * as Config from '../src/config';
 import { LocalStorage } from '../src/storage/local-storage';
@@ -94,6 +95,74 @@ describe('react-native-client', () => {
       // NOTE: `parseOldCookies` and `useNodeConfig` are only called once despite multiple init calls
       expect(parseOldCookies).toHaveBeenCalledTimes(1);
       expect(useNodeConfig).toHaveBeenCalledTimes(1);
+    });
+
+    test('should allow init to recover after a failed setup attempt', async () => {
+      const parseOldCookies = jest.spyOn(CookieMigration, 'parseOldCookies').mockResolvedValue({
+        optOut: false,
+      });
+      const originalUseReactNativeConfig = Config.useReactNativeConfig;
+      const useNodeConfig = jest
+        .spyOn(Config, 'useReactNativeConfig')
+        .mockRejectedValueOnce(new Error('config failed'))
+        .mockImplementation(originalUseReactNativeConfig);
+      const client = new AmplitudeReactNative();
+
+      await expect(
+        client.init(API_KEY, USER_ID, {
+          ...attributionConfig,
+        }).promise,
+      ).rejects.toThrow('config failed');
+
+      await expect(
+        client.init(API_KEY, USER_ID, {
+          ...attributionConfig,
+        }).promise,
+      ).resolves.toBeUndefined();
+
+      expect(client.getUserId()).toBe(USER_ID);
+      expect(parseOldCookies).toHaveBeenCalledTimes(2);
+      expect(useNodeConfig).toHaveBeenCalledTimes(2);
+    });
+
+    test('should remove the transient app state listener when a late init step fails', async () => {
+      const parseOldCookies = jest.spyOn(CookieMigration, 'parseOldCookies').mockResolvedValue({
+        optOut: false,
+      });
+      const firstRemove = jest.fn();
+      const secondRemove = jest.fn();
+      const firstSubscription = { remove: firstRemove } as unknown as ReturnType<typeof AppState.addEventListener>;
+      const secondSubscription = { remove: secondRemove } as unknown as ReturnType<typeof AppState.addEventListener>;
+      const addEventListener = jest
+        .spyOn(AppState, 'addEventListener')
+        .mockReturnValueOnce(firstSubscription)
+        .mockReturnValueOnce(secondSubscription);
+      const client = new AmplitudeReactNative();
+      const runAttributionStrategy = jest
+        .spyOn(client, 'runAttributionStrategy')
+        .mockRejectedValueOnce(new Error('attribution failed'))
+        .mockResolvedValueOnce(undefined);
+
+      await expect(
+        client.init(API_KEY, USER_ID, {
+          ...attributionConfig,
+        }).promise,
+      ).rejects.toThrow('attribution failed');
+      expect(firstRemove).toHaveBeenCalledTimes(1);
+
+      await expect(
+        client.init(API_KEY, USER_ID, {
+          ...attributionConfig,
+        }).promise,
+      ).resolves.toBeUndefined();
+
+      expect(parseOldCookies).toHaveBeenCalledTimes(2);
+      expect(addEventListener).toHaveBeenCalledWith('change', expect.any(Function));
+      expect(runAttributionStrategy).toHaveBeenCalledTimes(2);
+      expect(secondRemove).not.toHaveBeenCalled();
+
+      client.shutdown();
+      expect(secondRemove).toHaveBeenCalledTimes(1);
     });
 
     test('should read from new cookies config', async () => {

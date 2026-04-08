@@ -51,58 +51,69 @@ export class AmplitudeReactNative extends AmplitudeCore implements ReactNativeCl
     }
     this.initializing = true;
     this.explicitSessionId = options.sessionId;
+    let appStateHandlerInstalled = false;
 
-    // Step 1: Read cookies stored by old SDK
-    const oldCookies = await parseOldCookies(options.apiKey, options);
+    try {
+      // Step 1: Read cookies stored by old SDK
+      const oldCookies = await parseOldCookies(options.apiKey, options);
 
-    // Step 2: Create react native config
-    const reactNativeOptions = await useReactNativeConfig(options.apiKey, {
-      ...options,
-      deviceId: options.deviceId ?? oldCookies.deviceId,
-      sessionId: oldCookies.sessionId,
-      optOut: options.optOut ?? oldCookies.optOut,
-      lastEventTime: oldCookies.lastEventTime,
-      userId: options.userId ?? oldCookies.userId,
-    });
-    await super._init(reactNativeOptions);
+      // Step 2: Create react native config
+      const reactNativeOptions = await useReactNativeConfig(options.apiKey, {
+        ...options,
+        deviceId: options.deviceId ?? oldCookies.deviceId,
+        sessionId: oldCookies.sessionId,
+        optOut: options.optOut ?? oldCookies.optOut,
+        lastEventTime: oldCookies.lastEventTime,
+        userId: options.userId ?? oldCookies.userId,
+      });
+      await super._init(reactNativeOptions);
 
-    // Set up the analytics connector to integrate with the experiment SDK.
-    // Send events from the experiment SDK and forward identifies to the
-    // identity store.
-    const connector = getAnalyticsConnector();
-    connector.identityStore.setIdentity({
-      userId: this.config.userId,
-      deviceId: this.config.deviceId,
-    });
+      // Set up the analytics connector to integrate with the experiment SDK.
+      // Send events from the experiment SDK and forward identifies to the
+      // identity store.
+      const connector = getAnalyticsConnector();
+      connector.identityStore.setIdentity({
+        userId: this.config.userId,
+        deviceId: this.config.deviceId,
+      });
 
-    // Step 3: Install plugins
-    // Do not track any events before this
-    await this.add(new Destination()).promise;
-    await this.add(new Context()).promise;
-    await this.add(new IdentityEventSender()).promise;
+      // Step 3: Install plugins
+      // Do not track any events before this
+      await this.add(new Destination()).promise;
+      await this.add(new Context()).promise;
+      await this.add(new IdentityEventSender()).promise;
 
-    // Step 4: Manage session
-    this.appState = AppState.currentState;
-    const isNewSession = this.startNewSessionIfNeeded(this.currentTimeMillis());
-    this.config.loggerProvider?.log(
-      `Init: startNewSessionIfNeeded = ${isNewSession ? 'yes' : 'no'}, sessionId = ${
-        this.getSessionId() ?? 'undefined'
-      }`,
-    );
-    this.appStateChangeHandler = AppState.addEventListener('change', this.handleAppStateChange);
+      // Step 4: Manage session
+      this.appState = AppState.currentState;
+      const isNewSession = this.startNewSessionIfNeeded(this.currentTimeMillis());
+      this.config.loggerProvider?.log(
+        `Init: startNewSessionIfNeeded = ${isNewSession ? 'yes' : 'no'}, sessionId = ${
+          this.getSessionId() ?? 'undefined'
+        }`,
+      );
+      this.appStateChangeHandler?.remove();
+      this.appStateChangeHandler = AppState.addEventListener('change', this.handleAppStateChange);
+      appStateHandlerInstalled = true;
 
-    this.initializing = false;
+      // Step 5: Track attributions
+      await this.runAttributionStrategy(options.attribution, isNewSession);
 
-    // Step 5: Track attributions
-    await this.runAttributionStrategy(options.attribution, isNewSession);
+      // Step 6: Run queued functions
+      await this.runQueuedFunctions('dispatchQ');
 
-    // Step 6: Run queued functions
-    await this.runQueuedFunctions('dispatchQ');
-
-    // Step 7: Add the event receiver after running remaining queued functions.
-    connector.eventBridge.setEventReceiver((event) => {
-      void this.track(event.eventType, event.eventProperties);
-    });
+      // Step 7: Add the event receiver after running remaining queued functions.
+      connector.eventBridge.setEventReceiver((event) => {
+        void this.track(event.eventType, event.eventProperties);
+      });
+    } catch (error) {
+      if (appStateHandlerInstalled) {
+        this.appStateChangeHandler?.remove();
+        this.appStateChangeHandler = undefined;
+      }
+      throw error;
+    } finally {
+      this.initializing = false;
+    }
   }
 
   shutdown() {

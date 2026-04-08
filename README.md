@@ -28,14 +28,13 @@ Use a custom persistent storage provider. For Goodword, the intended backend is
 ## Fork lineage
 
 - upstream base: `@amplitude/analytics-react-native@1.5.52`
-- fork release: `amplitude-rn-analytics@1.5.53`
+- fork release: `amplitude-rn-analytics@1.5.54`
 
 ## Build and test
 
 ```sh
-cd packages/analytics-react-native
-npm install
-npm run typecheck
-npm run test
-npm run build
+npm install --prefix packages/analytics-react-native
+npm run --prefix packages/analytics-react-native typecheck
+npm run --prefix packages/analytics-react-native test
+npm run --prefix packages/analytics-react-native build
 ```

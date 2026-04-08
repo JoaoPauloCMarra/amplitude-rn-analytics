@@ -9,8 +9,7 @@
     "eject": "expo eject"
   },
   "dependencies": {
-    "@amplitude/analytics-react-native": "0.7.0",
-    "@react-native-async-storage/async-storage": "~1.17.11",
+    "amplitude-rn-analytics": "file:../../../packages/analytics-react-native",
     "expo": "~48.0.0",
     "expo-splash-screen": "~0.17.5",
     "expo-status-bar": "~1.4.2",

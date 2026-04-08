@@ -88,11 +88,14 @@ amplitude.init(API_KEY, undefined, {
 
 ## Exports
 
-- `LocalStorage`
+- `InMemoryStorage`
 - `MemoryStorage`
+- `LocalStorage`
 
-Both names point to the built-in shared in-memory storage implementation in
-this fork.
+`LocalStorage` remains as a compatibility alias.
+
+`MemoryStorage` and `InMemoryStorage` are the preferred names for the built-in
+shared in-memory storage implementation in this fork.
 
 ## Upstream compatibility
 
@@ -103,7 +106,7 @@ to memory instead of AsyncStorage.
 ## Fork lineage
 
 - upstream base: `@amplitude/analytics-react-native@1.5.52`
-- fork release: `amplitude-rn-analytics@1.5.53`
+- fork release: `amplitude-rn-analytics@1.5.54`
 
 ## Validation matrix
 
@@ -111,6 +114,8 @@ to memory instead of AsyncStorage.
 | --- | --- |
 | Upstream analytics API shape | close to `@amplitude/analytics-react-native@1.5.52` |
 | Package build | `bob build` |
-| TypeScript | `tsc -p ./tsconfig.json` |
+| TypeScript | `tsc -p ./tsconfig.json --noEmit` |
 | Built-in memory storage | regression tests |
 | Custom `storageProvider` | regression tests |
+| Init recovery after failed startup | regression tests |
+| Native context fallback | regression tests |

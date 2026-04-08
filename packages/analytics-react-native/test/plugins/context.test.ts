@@ -150,6 +150,42 @@ describe('context', () => {
       expect(firstContextEvent.app_version).toEqual(isWeb() ? undefined : '1.0.0');
     });
 
+    test('should preserve the runtime platform when native context lookup fails', async () => {
+      const context = new Context();
+      const config = useDefaultConfig({
+        deviceId: 'deviceId',
+        sessionId: 1,
+        userId: 'user@amplitude.com',
+      });
+      const loggerError = jest.fn();
+      config.loggerProvider = {
+        disable: jest.fn(),
+        enable: jest.fn(),
+        log: jest.fn(),
+        warn: jest.fn(),
+        error: loggerError,
+        debug: jest.fn(),
+      };
+      context.nativeModule = {
+        getApplicationContext: jest.fn().mockRejectedValue(new Error('native context failed')),
+      };
+      await context.setup(config);
+
+      const contextEvent = await context.execute({
+        event_type: 'event_type',
+      });
+
+      expect(contextEvent.event_type).toEqual('event_type');
+      expect(contextEvent.device_id).toEqual('deviceId');
+      expect(contextEvent.session_id).toEqual(1);
+      expect(contextEvent.user_id).toEqual('user@amplitude.com');
+      expect(contextEvent.insert_id).toBeDefined();
+      expect(contextEvent.platform).toEqual(isWeb() ? 'Web' : 'iOS');
+      expect(loggerError).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to load native application context: Error: native context failed'),
+      );
+    });
+
     describe('ingestionMetadata config', () => {
       test('should include ingestion metadata', async () => {
         const sourceName = 'ampli';

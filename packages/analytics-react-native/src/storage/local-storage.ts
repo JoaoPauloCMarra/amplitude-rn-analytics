@@ -72,3 +72,5 @@ export class MemoryStorage<T> implements Storage<T> {
 }
 
 export class LocalStorage<T> extends MemoryStorage<T> {}
+
+export { MemoryStorage as InMemoryStorage };

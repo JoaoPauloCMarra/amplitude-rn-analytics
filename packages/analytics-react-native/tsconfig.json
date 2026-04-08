@@ -16,5 +16,6 @@
     "noStrictGenericChecks": false,
     "skipLibCheck": true,
     "target": "es6"
-  }
+  },
+  "exclude": ["lib"]
 }

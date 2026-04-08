@@ -1,5 +1,4 @@
-import { NativeModules } from 'react-native';
-import { Platform } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 
 /*
  * Set the platform OS to mobile.
@@ -22,11 +21,12 @@ NativeModules.AmplitudeReactNative = {
     return {
       version: '1.0.0',
       platform: 'iOS',
-      os: 'react-native-tests',
+      osName: 'iOS',
+      osVersion: 'react-native-tests',
       language: 'react-native-tests',
-      device_brand: 'react-native-tests',
-      device_manufacturer: 'react-native-tests',
-      device_model: 'react-native-tests',
+      deviceBrand: 'react-native-tests',
+      deviceManufacturer: 'react-native-tests',
+      deviceModel: 'react-native-tests',
       carrier: 'react-native-tests',
     };
   },

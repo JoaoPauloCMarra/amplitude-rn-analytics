@@ -5,6 +5,7 @@ import {
   getDeviceId,
   getSessionId,
   getUserId,
+  InMemoryStorage,
   groupIdentify,
   Identify,
   identify,
@@ -31,6 +32,7 @@ describe('index', () => {
     expect(typeof getDeviceId).toBe('function');
     expect(typeof getSessionId).toBe('function');
     expect(typeof getUserId).toBe('function');
+    expect(typeof InMemoryStorage).toBe('function');
     expect(typeof Identify).toBe('function');
     expect(typeof identify).toBe('function');
     expect(typeof init).toBe('function');

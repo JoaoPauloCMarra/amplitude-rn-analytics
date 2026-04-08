@@ -20,11 +20,11 @@ import {
 import Toast from 'react-native-toast-message';
 import {
   Identify,
+  Types,
   identify,
   init,
   track,
-} from '@amplitude/analytics-react-native';
-import {LogLevel} from '@amplitude/analytics-types';
+} from 'amplitude-rn-analytics';
 
 import {
   Colors,
@@ -39,7 +39,7 @@ type SectionProps = PropsWithChildren<{
 }>;
 
 init('API_KEY', 'example_user_id', {
-    logLevel: LogLevel.Verbose,
+    logLevel: Types.LogLevel.Verbose,
 });
 
 function App(): React.JSX.Element {
