@@ -111,6 +111,38 @@ describe('SessionReplayEventsIDBStore', () => {
       expect(mockLoggerProvider.warn).toHaveBeenCalled();
       expect(unsentSequences).toBeUndefined();
     });
+
+    test('should log at debug (not warn) when tx.done rejects with AbortError', async () => {
+      // Repro: transaction aborts after cursor exhaustion; tx.done rejection must be caught
+      const abortError = new DOMException(
+        'The transaction was aborted, so the request cannot be fulfilled.',
+        'AbortError',
+      );
+      const txDone = Promise.reject(abortError);
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
+      txDone.catch(() => {}); // prevent unhandled rejection in test runner
+      const mockDB = {
+        transaction: jest.fn().mockReturnValue({
+          store: { openCursor: jest.fn().mockResolvedValue(null) },
+          done: txDone,
+        }),
+      } as unknown as IDBPDatabase<SessionReplayDB>;
+      jest.spyOn(EventsIDBStore, 'createStore').mockResolvedValue(mockDB);
+
+      const eventsStorage = await SessionReplayEventsIDBStore.new('replay', {
+        apiKey,
+        loggerProvider: mockLoggerProvider,
+      });
+
+      const result = await eventsStorage?.getSequencesToSend();
+      // With the .catch() approach the function returns whatever sequences were
+      // collected before the abort (an empty array here since the cursor was null).
+      expect(result).toEqual([]);
+      expect(mockLoggerProvider.debug).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to store session replay events in IndexedDB'),
+      );
+      expect(mockLoggerProvider.warn).not.toHaveBeenCalled();
+    });
   });
 
   describe('storeCurrentSequence', () => {
@@ -234,20 +266,31 @@ describe('SessionReplayEventsIDBStore', () => {
       expect(allSessionCurrentSequence).toEqual([{ events: [mockEventString2], sessionId: 123 }]);
     });
 
-    test('should return undefined if storeSendingEvents fails', async () => {
+    test('should return undefined if the split-path transaction fails', async () => {
+      // The split path now uses a single multi-store transaction for both
+      // sessionCurrentSequence and sequencesToSend. Verify that a transaction
+      // error still results in undefined being returned and a warn being logged.
       const eventsStorage = await SessionReplayEventsIDBStore.new('replay', {
         apiKey,
         loggerProvider: mockLoggerProvider,
       });
 
-      // Fake as if there are events to send
       eventsStorage!.shouldSplitEventsList = jest.fn().mockReturnValue(true);
-      eventsStorage!.storeSendingEvents = jest.fn().mockResolvedValue(undefined);
 
+      // Seed one event so shouldSplitEventsList can trigger on the next call
       await eventsStorage?.addEventToCurrentSequence(123, mockEventString);
+
+      // Sabotage the db so the next transaction() call throws
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (eventsStorage as any).db = {
+        transaction: () => {
+          throw new Error('transaction failed');
+        },
+      };
 
       const eventsToSend = await eventsStorage?.addEventToCurrentSequence(123, mockEventString2);
       expect(eventsToSend).toBeUndefined();
+      expect(mockLoggerProvider.warn).toHaveBeenCalled();
     });
 
     test('should catch errors', async () => {
@@ -260,6 +303,79 @@ describe('SessionReplayEventsIDBStore', () => {
       const eventsToSend = await eventsStorage?.addEventToCurrentSequence(123, mockEventString2);
       expect(mockLoggerProvider.warn).toHaveBeenCalled();
       expect(eventsToSend).toBeUndefined();
+    });
+
+    test('should log at debug (not warn) when tx.done rejects with AbortError on first event for session', async () => {
+      // Repro: tx.done rejects with AbortError after put succeeds (transaction aborts before commit).
+      // The old code had an early `return` before `await tx.done` in the !sequenceEvents branch,
+      // meaning this rejection was silently unhandled instead of being routed through logIdbError.
+      const abortError = new DOMException(
+        'The transaction was aborted, so the request cannot be fulfilled.',
+        'AbortError',
+      );
+      const txDone = Promise.reject(abortError);
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
+      txDone.catch(() => {}); // prevent unhandled rejection in test runner
+      const mockDB = {
+        transaction: jest.fn().mockReturnValue({
+          objectStore: jest.fn().mockReturnValue({
+            get: jest.fn().mockResolvedValue(undefined), // no existing sequence
+            put: jest.fn().mockResolvedValue(undefined), // put succeeds
+          }),
+          done: txDone, // but transaction aborts before commit
+        }),
+      } as unknown as IDBPDatabase<SessionReplayDB>;
+      jest.spyOn(EventsIDBStore, 'createStore').mockResolvedValue(mockDB);
+
+      const eventsStorage = await SessionReplayEventsIDBStore.new('replay', {
+        apiKey,
+        loggerProvider: mockLoggerProvider,
+      });
+
+      const result = await eventsStorage?.addEventToCurrentSequence(123, mockEventString);
+      expect(result).toBeUndefined();
+      expect(mockLoggerProvider.debug).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to store session replay events in IndexedDB'),
+      );
+      expect(mockLoggerProvider.warn).not.toHaveBeenCalled();
+    });
+    test('should log at debug (not warn) when tx.done rejects with AbortError on split path', async () => {
+      // Repro: the transaction opens both stores atomically. If the browser aborts the
+      // transaction after the puts succeed (e.g. due to resource pressure), the AbortError
+      // from tx.done must be caught and logged at debug, not warn.
+      const abortError = new DOMException(
+        'The transaction was aborted, so the request cannot be fulfilled.',
+        'AbortError',
+      );
+      const txDoneForSplit = Promise.reject(abortError);
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
+      txDoneForSplit.catch(() => {}); // prevent unhandled rejection in test runner
+
+      const mockDB = {
+        transaction: jest.fn().mockReturnValue({
+          // objectStore() returns the same mock regardless of store name
+          objectStore: jest.fn().mockReturnValue({
+            get: jest.fn().mockResolvedValue({ sessionId: 123, events: [mockEventString] }),
+            put: jest.fn().mockResolvedValue(1),
+          }),
+          done: txDoneForSplit, // tx aborts before commit
+        }),
+      } as unknown as IDBPDatabase<SessionReplayDB>;
+      jest.spyOn(EventsIDBStore, 'createStore').mockResolvedValue(mockDB);
+
+      const eventsStorage = await SessionReplayEventsIDBStore.new('replay', {
+        apiKey,
+        loggerProvider: mockLoggerProvider,
+      });
+      eventsStorage!.shouldSplitEventsList = jest.fn().mockReturnValue(true);
+
+      await eventsStorage?.addEventToCurrentSequence(123, mockEventString2);
+      // Allow microtasks to settle so the tx.done.catch() handler fires
+      await Promise.resolve();
+      expect(mockLoggerProvider.debug).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to store session replay events in IndexedDB'),
+      );
+      expect(mockLoggerProvider.warn).not.toHaveBeenCalled();
     });
     test('should handle undefined store', async () => {
       mockStoreForError();
@@ -346,6 +462,89 @@ describe('SessionReplayEventsIDBStore', () => {
 
       await eventsStorage?.cleanUpSessionEventsStore(0, 1);
       expect(mockLoggerProvider.warn).toHaveBeenCalled();
+    });
+  });
+
+  describe('persistent failure tracking', () => {
+    test('calls onPersistentFailure after consecutive failures reach threshold', async () => {
+      mockStoreForError();
+      const onPersistentFailure = jest.fn();
+      const eventsStorage = await SessionReplayEventsIDBStore.new('replay', {
+        apiKey,
+        loggerProvider: mockLoggerProvider,
+        onPersistentFailure,
+        consecutiveFailureThreshold: 2,
+      });
+
+      await eventsStorage?.getSequencesToSend(); // failure 1
+      expect(onPersistentFailure).not.toHaveBeenCalled();
+      await eventsStorage?.getSequencesToSend(); // failure 2 — triggers callback
+      expect(onPersistentFailure).toHaveBeenCalledTimes(1);
+    });
+
+    test('does not call onPersistentFailure before threshold is reached', async () => {
+      mockStoreForError();
+      const onPersistentFailure = jest.fn();
+      const eventsStorage = await SessionReplayEventsIDBStore.new('replay', {
+        apiKey,
+        loggerProvider: mockLoggerProvider,
+        onPersistentFailure,
+        consecutiveFailureThreshold: 3,
+      });
+
+      await eventsStorage?.getSequencesToSend(); // failure 1
+      await eventsStorage?.getSequencesToSend(); // failure 2
+      expect(onPersistentFailure).not.toHaveBeenCalled();
+    });
+
+    test('calls onPersistentFailure only once regardless of further failures', async () => {
+      mockStoreForError();
+      const onPersistentFailure = jest.fn();
+      const eventsStorage = await SessionReplayEventsIDBStore.new('replay', {
+        apiKey,
+        loggerProvider: mockLoggerProvider,
+        onPersistentFailure,
+        consecutiveFailureThreshold: 1,
+      });
+
+      await eventsStorage?.getSequencesToSend();
+      await eventsStorage?.getSequencesToSend();
+      await eventsStorage?.getSequencesToSend();
+      expect(onPersistentFailure).toHaveBeenCalledTimes(1);
+    });
+
+    test('does not throw when threshold is reached with no callback registered', async () => {
+      mockStoreForError();
+      const eventsStorage = await SessionReplayEventsIDBStore.new('replay', {
+        apiKey,
+        loggerProvider: mockLoggerProvider,
+        consecutiveFailureThreshold: 1,
+        // no onPersistentFailure
+      });
+
+      await expect(eventsStorage?.getSequencesToSend()).resolves.toBeUndefined();
+    });
+
+    test('resets consecutive failure count on successful operation', async () => {
+      const mockDB = mockStoreForError();
+      const onPersistentFailure = jest.fn();
+      const eventsStorage = await SessionReplayEventsIDBStore.new('replay', {
+        apiKey,
+        loggerProvider: mockLoggerProvider,
+        onPersistentFailure,
+        consecutiveFailureThreshold: 2,
+      });
+
+      await eventsStorage?.storeSendingEvents(123, [mockEventString]); // failure 1
+      expect(onPersistentFailure).not.toHaveBeenCalled();
+
+      // Make next put succeed so recordSuccess() resets the counter
+      (mockDB.put as jest.Mock).mockResolvedValueOnce(1);
+      await eventsStorage?.storeSendingEvents(123, [mockEventString]); // success — resets counter
+
+      // One more failure — counter is back to 1, threshold is 2, no callback yet
+      await eventsStorage?.storeSendingEvents(123, [mockEventString]); // failure 1 (fresh)
+      expect(onPersistentFailure).not.toHaveBeenCalled();
     });
   });
 });
