@@ -96,9 +96,12 @@ export class SessionReplay implements AmplitudeSessionReplay {
 
   // Cache the dynamically imported record function
   private recordFunction: RecordFunction | null = null;
+  private recordEventsInFlight = false;
 
   /** Current page URL, kept in sync with SPA navigations for URL-based masking */
   private currentPageUrl = '';
+
+  private recordEventsPendingShouldLogMetadata: boolean | null = null;
 
   /** Cleanup for URL change listener used to re-evaluate targeting on SPA route changes */
   private urlChangeCleanup: (() => void) | null = null;
@@ -420,9 +423,15 @@ export class SessionReplay implements AmplitudeSessionReplay {
   };
 
   focusListener = () => {
-    // Restart recording on focus to ensure that when user
-    // switches tabs, we take a full snapshot
-    void this.recordEvents(false);
+    if (this.recordCancelCallback && this.recordFunction) {
+      try {
+        this.recordFunction.takeFullSnapshot(true);
+      } catch (error) {
+        this.loggerProvider.warn('Failed to take full snapshot on focus:', error);
+      }
+    } else if (!this.recordEventsInFlight) {
+      void this.recordEvents(false);
+    }
   };
 
   /**
@@ -730,6 +739,25 @@ export class SessionReplay implements AmplitudeSessionReplay {
   }
 
   async recordEvents(shouldLogMetadata = true) {
+    if (this.recordEventsInFlight) {
+      this.recordEventsPendingShouldLogMetadata = shouldLogMetadata;
+      return;
+    }
+    this.recordEventsInFlight = true;
+    try {
+      await this._recordEvents(shouldLogMetadata);
+      while (this.recordEventsPendingShouldLogMetadata !== null) {
+        const pendingArgs = this.recordEventsPendingShouldLogMetadata;
+        this.recordEventsPendingShouldLogMetadata = null;
+        await this._recordEvents(pendingArgs);
+      }
+    } finally {
+      this.recordEventsInFlight = false;
+      this.recordEventsPendingShouldLogMetadata = null;
+    }
+  }
+
+  private async _recordEvents(shouldLogMetadata = true) {
     const config = this.config;
     const shouldRecord = this.getShouldRecord();
     const sessionId = this.identifiers?.sessionId;
