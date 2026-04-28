@@ -28,7 +28,7 @@ Use a custom persistent storage provider. For Goodword, the intended backend is
 ## Fork lineage
 
 - upstream base: `@amplitude/analytics-react-native@1.5.52`
-- fork release: `amplitude-rn-analytics@1.5.54`
+- fork release: `amplitude-rn-analytics@1.5.55`
 
 ## Build and test
 
