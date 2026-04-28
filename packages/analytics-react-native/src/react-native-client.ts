@@ -35,6 +35,7 @@ const END_SESSION_EVENT = 'session_end';
 export class AmplitudeReactNative extends AmplitudeCore implements ReactNativeClient, AnalyticsClient {
   appState: AppStateStatus = 'background';
   private appStateChangeHandler: NativeEventSubscription | undefined;
+  private initPromise: Promise<void> | undefined;
   explicitSessionId: number | undefined;
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
@@ -42,7 +43,12 @@ export class AmplitudeReactNative extends AmplitudeCore implements ReactNativeCl
   userProperties: { [key: string]: any } | undefined;
 
   init(apiKey = '', userId?: string, options?: ReactNativeOptions) {
-    return returnWrapper(this._init({ ...options, userId, apiKey }));
+    this.initPromise =
+      this.initPromise ??
+      this._init({ ...options, userId, apiKey }).finally(() => {
+        this.initPromise = undefined;
+      });
+    return returnWrapper(this.initPromise);
   }
   protected async _init(options: ReactNativeOptions & { apiKey: string }) {
     // Step 0: Block concurrent initialization
@@ -118,6 +124,11 @@ export class AmplitudeReactNative extends AmplitudeCore implements ReactNativeCl
 
   shutdown() {
     this.appStateChangeHandler?.remove();
+    this.appStateChangeHandler = undefined;
+
+    const connector = getAnalyticsConnector();
+    connector.eventBridge.setEventReceiver(() => undefined);
+    connector.identityStore.setIdentity({});
   }
 
   async runAttributionStrategy(attributionConfig?: AttributionOptions, isNewSession = false) {

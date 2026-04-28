@@ -1,5 +1,5 @@
 import { Storage, getOldCookieName, CookieStorage } from '@amplitude/analytics-core';
-import { decode, parseOldCookies, parseTime } from '../../src/cookie-migration';
+import { decode, parseOldCookies, parseOptOut, parseTime } from '../../src/cookie-migration';
 import * as LocalStorageModule from '../../src/storage/local-storage';
 import { isWeb } from '../../src/utils/platform';
 
@@ -7,7 +7,7 @@ describe('cookie-migration', () => {
   const API_KEY = 'asdfasdf';
   afterEach(() => {
     // clean up cookies
-    document.cookie = `${getOldCookieName(API_KEY)}=null; expires=-1`;
+    document.cookie = `${getOldCookieName(API_KEY)}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
   });
 
   describe('parseOldCookies', () => {
@@ -82,6 +82,21 @@ describe('cookie-migration', () => {
         const cookies2 = await storage.getRaw(oldCookieName);
         expect(cookies2).toBe(`deviceId.${encodedUserId}..${time}.${time}`);
       });
+
+      test('should parse false opt-out values correctly', async () => {
+        const timestamp = 1650949309508;
+        const time = timestamp.toString(32);
+        const userId = 'userId';
+        const encodedUserId = btoa(unescape(encodeURIComponent(userId)));
+        const oldCookieName = getOldCookieName(API_KEY);
+        document.cookie = `${oldCookieName}=deviceId.${encodedUserId}.0.${time}.${time}`;
+
+        const cookies = await parseOldCookies(API_KEY, {
+          cookieUpgrade: false,
+        });
+
+        expect(cookies.optOut).toBe(false);
+      });
     }
   });
 
@@ -108,6 +123,19 @@ describe('cookie-migration', () => {
 
     test('should handle undefined input', () => {
       expect(decode(undefined)).toBe(undefined);
+    });
+  });
+
+  describe('parseOptOut', () => {
+    test('should parse truthy values', () => {
+      expect(parseOptOut('1')).toBe(true);
+      expect(parseOptOut('true')).toBe(true);
+    });
+
+    test('should parse falsy values', () => {
+      expect(parseOptOut('0')).toBe(false);
+      expect(parseOptOut('false')).toBe(false);
+      expect(parseOptOut(undefined)).toBe(false);
     });
   });
 });

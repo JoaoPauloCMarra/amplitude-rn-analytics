@@ -12,8 +12,8 @@ Pod::Spec.new do |s|
 
   s.swift_version = "5.0"
 
-  s.platforms = { :ios => "10.0", :tvos => "10.0" }
-  s.source = { :git => "https://github.com/amplitude/Amplitude-TypeScript.git", :tag => "#{s.version}" }
+  s.platforms = { :ios => "13.4", :tvos => "13.0" }
+  s.source = { :git => "https://github.com/JoaoPauloCMarra/amplitude-rn-analytics.git", :tag => "analytics-react-native-v#{s.version}" }
 
   s.source_files = "ios/**/*.{h,m,mm,swift}"
 

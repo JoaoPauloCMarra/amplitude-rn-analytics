@@ -6,8 +6,12 @@ module.exports = {
   displayName: package.name,
   rootDir: '.',
   preset: 'react-native',
+  transform: {
+    '^.+\\.[jt]sx?$': 'babel-jest',
+  },
   testEnvironment: 'jsdom',
   testMatch: ['<rootDir>/test/**/*.test.ts'],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   modulePathIgnorePatterns: [
     "<rootDir>/lib/"
   ],

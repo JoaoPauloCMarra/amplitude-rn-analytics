@@ -37,4 +37,5 @@ npm install --prefix packages/analytics-react-native
 npm run --prefix packages/analytics-react-native typecheck
 npm run --prefix packages/analytics-react-native test
 npm run --prefix packages/analytics-react-native build
+npm run --prefix packages/analytics-react-native pack:local
 ```
