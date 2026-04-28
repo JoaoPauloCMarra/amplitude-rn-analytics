@@ -12,12 +12,13 @@ if (isNewArchitectureEnabled()) {
   apply plugin: "com.facebook.react"
 }
 
-def getExtOrDefault(name) {
-  return rootProject.ext.has(name) ? rootProject.ext.get(name) : project.properties["AmplitudeReactNative_" + name]
+def getExtOrDefault(name, fallback) {
+  return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["AmplitudeReactNative_" + name] ?: fallback)
 }
 
-def getExtOrIntegerDefault(name) {
-  return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["AmplitudeReactNative_" + name]).toInteger()
+def getExtOrIntegerDefault(name, fallback) {
+  def value = rootProject.ext.has(name) ? rootProject.ext.get(name) : project.properties["AmplitudeReactNative_" + name]
+  return value != null ? value.toInteger() : fallback
 }
 
 def supportsNamespace() {
@@ -44,11 +45,11 @@ android {
     }
   }
 
-  compileSdkVersion getExtOrIntegerDefault("compileSdkVersion")
+  compileSdkVersion getExtOrIntegerDefault("compileSdkVersion", 36)
 
   defaultConfig {
-    minSdkVersion getExtOrIntegerDefault("minSdkVersion")
-    targetSdkVersion getExtOrIntegerDefault("targetSdkVersion")
+    minSdkVersion getExtOrIntegerDefault("minSdkVersion", 24)
+    targetSdkVersion getExtOrIntegerDefault("targetSdkVersion", 36)
     buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", isNewArchitectureEnabled().toString()
   }
   buildTypes {
@@ -62,10 +63,13 @@ android {
   }
 
   compileOptions {
-    sourceCompatibility JavaVersion.VERSION_1_8
-    targetCompatibility JavaVersion.VERSION_1_8
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
   }
 
+  kotlinOptions {
+    jvmTarget = JavaVersion.VERSION_17.toString()
+  }
 }
 
 repositories {
@@ -73,7 +77,7 @@ repositories {
   google()
 }
 
-def kotlin_version = getExtOrDefault("kotlinVersion")
+def kotlin_version = getExtOrDefault("kotlinVersion", "2.1.20")
 
 dependencies {
   // For < 0.71, this will be from the local maven repo

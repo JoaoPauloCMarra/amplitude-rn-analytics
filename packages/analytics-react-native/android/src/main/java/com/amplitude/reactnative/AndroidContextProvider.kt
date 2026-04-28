@@ -112,11 +112,9 @@ class AndroidContextProvider(private val context: Context, shouldTrackAdid: Bool
         try {
           val manager = context
             .getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-          if (manager.phoneType != TelephonyManager.PHONE_TYPE_CDMA) {
-            val country = manager.networkCountryIso
-            if (country != null) {
-              return country.uppercase(Locale.US)
-            }
+          val country = manager.networkCountryIso
+          if (!country.isNullOrEmpty()) {
+            return country.uppercase(Locale.US)
           }
         } catch (e: Exception) {
           // Failed to get country from network
@@ -124,6 +122,7 @@ class AndroidContextProvider(private val context: Context, shouldTrackAdid: Bool
         return null
       }
 
+    @Suppress("DEPRECATION")
     private val locale: Locale
       get() {
         val configuration = Resources.getSystem().configuration
@@ -175,9 +174,9 @@ class AndroidContextProvider(private val context: Context, shouldTrackAdid: Bool
         appSetId = getId.invoke(appSetInfo) as String
       } catch (e: ClassNotFoundException) {
         LogcatLogger.logger
-          .warn("Google Play Services SDK not found for app set id!")
+          .debug("Google Play Services SDK not found for app set id")
       } catch (e: InvocationTargetException) {
-        LogcatLogger.logger.warn("Google Play Services not available for app set id")
+        LogcatLogger.logger.debug("Google Play Services not available for app set id")
       } catch (e: Exception) {
         LogcatLogger.logger.error(
           "Encountered an error connecting to Google Play Services for app set id"
@@ -208,16 +207,15 @@ class AndroidContextProvider(private val context: Context, shouldTrackAdid: Bool
           )
           val limitAdTrackingEnabled = isLimitAdTrackingEnabled
             .invoke(advertisingInfo) as Boolean
-          this.limitAdTrackingEnabled =
-            limitAdTrackingEnabled != null && limitAdTrackingEnabled
+          this.limitAdTrackingEnabled = limitAdTrackingEnabled
           val getId = advertisingInfo.javaClass.getMethod("getId")
           advertisingId = getId.invoke(advertisingInfo) as String
         } catch (e: ClassNotFoundException) {
           LogcatLogger.logger
-            .warn("Google Play Services SDK not found for advertising id!")
+            .debug("Google Play Services SDK not found for advertising id")
         } catch (e: InvocationTargetException) {
           LogcatLogger.logger
-            .warn("Google Play Services not available for advertising id")
+            .debug("Google Play Services not available for advertising id")
         } catch (e: Exception) {
           LogcatLogger.logger.error(
             "Encountered an error connecting to Google Play Services for advertising id"
@@ -237,17 +235,17 @@ class AndroidContextProvider(private val context: Context, shouldTrackAdid: Bool
         )
         val status = getGPSAvailable.invoke(null, context) as Int
         // status 0 corresponds to com.google.android.gms.common.ConnectionResult.SUCCESS;
-        return status != null && status == 0
+        return status == 0
       } catch (e: NoClassDefFoundError) {
-        LogcatLogger.logger.warn("Google Play Services Util not found!")
+        LogcatLogger.logger.debug("Google Play Services Util not found")
       } catch (e: ClassNotFoundException) {
-        LogcatLogger.logger.warn("Google Play Services Util not found!")
+        LogcatLogger.logger.debug("Google Play Services Util not found")
       } catch (e: NoSuchMethodException) {
-        LogcatLogger.logger.warn("Google Play Services not available")
+        LogcatLogger.logger.debug("Google Play Services not available")
       } catch (e: InvocationTargetException) {
-        LogcatLogger.logger.warn("Google Play Services not available")
+        LogcatLogger.logger.debug("Google Play Services not available")
       } catch (e: IllegalAccessException) {
-        LogcatLogger.logger.warn("Google Play Services not available")
+        LogcatLogger.logger.debug("Google Play Services not available")
       } catch (e: Exception) {
         LogcatLogger.logger.warn(
           "Error when checking for Google Play Services: $e"

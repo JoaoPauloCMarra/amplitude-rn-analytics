@@ -24,7 +24,7 @@ export const parseOldCookies = async (apiKey: string, options?: ReactNativeOptio
     userId: decode(userId),
     sessionId: parseTime(sessionId),
     lastEventTime: parseTime(lastEventTime),
-    optOut: Boolean(optOut),
+    optOut: parseOptOut(optOut),
   };
 };
 
@@ -45,4 +45,8 @@ export const decode = (value?: string): string | undefined => {
   } catch {
     return undefined;
   }
+};
+
+export const parseOptOut = (value?: string): boolean => {
+  return value === '1' || value === 'true';
 };

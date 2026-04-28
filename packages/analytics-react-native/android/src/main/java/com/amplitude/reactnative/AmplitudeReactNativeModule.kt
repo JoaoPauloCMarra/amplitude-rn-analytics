@@ -29,27 +29,34 @@ class AmplitudeReactNativeModule(private val reactContext: ReactApplicationConte
 
     @ReactMethod
     private fun getApplicationContext(options: ReadableMap, promise: Promise) {
-        val trackAdid = if (options.hasKey("adid")) options.getBoolean("adid") else false
-        if (androidContextProvider == null) {
-            androidContextProvider = AndroidContextProvider(reactContext.applicationContext, trackAdid)
-        }
-
-        promise.resolve(WritableNativeMap().apply {
-            putString("version", androidContextProvider!!.versionName)
-            putString("platform", androidContextProvider!!.platform)
-            putString("language", androidContextProvider!!.language)
-            putString("country", androidContextProvider!!.country)
-            putString("osName", androidContextProvider!!.osName)
-            putString("osVersion", androidContextProvider!!.osVersion)
-            putString("deviceBrand", androidContextProvider!!.brand)
-            putString("deviceManufacturer", androidContextProvider!!.manufacturer)
-            putString("deviceModel", androidContextProvider!!.model)
-            putString("carrier", androidContextProvider!!.carrier)
-            if (trackAdid) {
-                putString("adid", androidContextProvider!!.advertisingId)
+        try {
+            val trackAdid = if (options.hasKey("adid")) options.getBoolean("adid") else false
+            if (androidContextProvider == null) {
+                androidContextProvider = AndroidContextProvider(reactContext.applicationContext, trackAdid)
             }
-            putString("appSetId", androidContextProvider!!.appSetId)
-        })
+
+            promise.resolve(WritableNativeMap().apply {
+                putString("version", androidContextProvider!!.versionName)
+                putString("platform", androidContextProvider!!.platform)
+                putString("language", androidContextProvider!!.language)
+                putString("country", androidContextProvider!!.country)
+                putString("osName", androidContextProvider!!.osName)
+                putString("osVersion", androidContextProvider!!.osVersion)
+                putString("deviceBrand", androidContextProvider!!.brand)
+                putString("deviceManufacturer", androidContextProvider!!.manufacturer)
+                putString("deviceModel", androidContextProvider!!.model)
+                putString("carrier", androidContextProvider!!.carrier)
+                if (trackAdid) {
+                    putString("adid", androidContextProvider!!.advertisingId)
+                }
+                putString("appSetId", androidContextProvider!!.appSetId)
+            })
+        } catch (e: Exception) {
+            LogcatLogger.logger.error(
+                "can't get application context: $e"
+            )
+            promise.reject("ERR_AMPLITUDE_APPLICATION_CONTEXT", e)
+        }
     }
 
     @ReactMethod
@@ -82,6 +89,7 @@ class AmplitudeReactNativeModule(private val reactContext: ReactApplicationConte
             LogcatLogger.logger.error(
                 "can't get legacy session data: $e"
             )
+            promise.resolve(WritableNativeMap())
         }
     }
 

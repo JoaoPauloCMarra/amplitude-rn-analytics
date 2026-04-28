@@ -1,24 +1,19 @@
 import * as Config from '../src/config';
 import * as LocalStorageModule from '../src/storage/local-storage';
 import * as core from '@amplitude/analytics-core';
-import { LogLevel, Storage, UserSession, getCookieName, FetchTransport } from '@amplitude/analytics-core';
-import * as BrowserUtils from '@amplitude/analytics-core';
 import { isWeb } from '../src/utils/platform';
 import { uuidPattern } from './helpers/constants';
 
 describe('config', () => {
   const someUUID: string = expect.stringMatching(uuidPattern) as string;
-  const someStorage: core.MemoryStorage<UserSession> = expect.any(
-    core.MemoryStorage,
-  ) as core.MemoryStorage<UserSession>;
 
   const API_KEY = 'apiKey';
 
   describe('BrowserConfig', () => {
     test('should create overwrite config', async () => {
-      const cookieStorage = new core.MemoryStorage<UserSession>();
+      const cookieStorage = new core.MemoryStorage<core.UserSession>();
       const logger = new core.Logger();
-      logger.enable(LogLevel.Warn);
+      logger.enable(core.LogLevel.Warn);
       const config = new Config.ReactNativeConfig('');
       expect(config).toEqual({
         apiKey: '',
@@ -35,7 +30,7 @@ describe('config', () => {
         flushQueueSize: 30,
         instanceName: '$default_instance',
         loggerProvider: logger,
-        logLevel: LogLevel.Warn,
+        logLevel: core.LogLevel.Warn,
         minIdLength: undefined,
         _optOut: false,
         partnerId: undefined,
@@ -58,7 +53,7 @@ describe('config', () => {
           idfv: true,
           country: false,
         },
-        transportProvider: new FetchTransport(),
+        transportProvider: new core.FetchTransport(),
         useBatch: false,
         trackingSessionEvents: false,
         offline: false,
@@ -69,15 +64,18 @@ describe('config', () => {
 
   describe('useBrowserConfig', () => {
     test('should create default config', async () => {
-      jest.spyOn(Config, 'createCookieStorage').mockResolvedValueOnce(new core.MemoryStorage());
-      jest.spyOn(Config, 'createEventsStorage').mockResolvedValueOnce(new core.MemoryStorage());
+      const cookieStorage = new core.MemoryStorage<core.UserSession>();
+      const storageProvider = new core.MemoryStorage<core.Event[]>();
       const logger = new core.Logger();
-      logger.enable(LogLevel.Warn);
-      const config = await Config.useReactNativeConfig(API_KEY, undefined);
+      logger.enable(core.LogLevel.Warn);
+      const config = await Config.useReactNativeConfig(API_KEY, {
+        cookieStorage,
+        storageProvider,
+      });
       expect(config).toEqual({
         apiKey: API_KEY,
         appVersion: undefined,
-        cookieStorage: someStorage,
+        cookieStorage,
         cookieExpiration: 365,
         cookieSameSite: 'Lax',
         cookieSecure: false,
@@ -90,7 +88,7 @@ describe('config', () => {
         flushQueueSize: 30,
         instanceName: '$default_instance',
         loggerProvider: logger,
-        logLevel: LogLevel.Warn,
+        logLevel: core.LogLevel.Warn,
         minIdLength: undefined,
         _optOut: false,
         partnerId: undefined,
@@ -99,7 +97,7 @@ describe('config', () => {
         serverUrl: 'https://api2.amplitude.com/2/httpapi',
         serverZone: 'US',
         sessionTimeout: 300000,
-        storageProvider: new core.MemoryStorage(),
+        storageProvider,
         trackingOptions: {
           adid: true,
           carrier: true,
@@ -114,7 +112,7 @@ describe('config', () => {
           idfv: true,
           country: false,
         },
-        transportProvider: new FetchTransport(),
+        transportProvider: new core.FetchTransport(),
         useBatch: false,
         trackingSessionEvents: false,
         offline: false,
@@ -122,8 +120,9 @@ describe('config', () => {
     });
 
     test('should create using cookies/overwrite', async () => {
-      const cookieStorage = new core.MemoryStorage<UserSession>();
-      await cookieStorage.set(getCookieName(API_KEY), {
+      const cookieStorage = new core.MemoryStorage<core.UserSession>();
+      const storageProvider = new core.MemoryStorage<core.Event[]>();
+      await cookieStorage.set(core.getCookieName(API_KEY), {
         deviceId: 'deviceIdFromCookies',
         lastEventTime: 1,
         sessionId: -1,
@@ -131,11 +130,10 @@ describe('config', () => {
         optOut: false,
         lastEventId: 2,
       });
-      jest.spyOn(Config, 'createCookieStorage').mockResolvedValueOnce(cookieStorage);
-      jest.spyOn(Config, 'createEventsStorage').mockResolvedValueOnce(new core.MemoryStorage());
       const logger = new core.Logger();
-      logger.enable(LogLevel.Warn);
+      logger.enable(core.LogLevel.Warn);
       const config = await Config.useReactNativeConfig(API_KEY, {
+        cookieStorage,
         partnerId: 'partnerId',
         plan: {
           version: '0',
@@ -147,6 +145,7 @@ describe('config', () => {
         sessionTimeout: 1,
         cookieUpgrade: false,
         disableCookies: true,
+        storageProvider,
       });
       expect(config).toEqual({
         apiKey: API_KEY,
@@ -166,7 +165,7 @@ describe('config', () => {
         _lastEventId: 2,
         _lastEventTime: 1,
         loggerProvider: logger,
-        logLevel: LogLevel.Warn,
+        logLevel: core.LogLevel.Warn,
         minIdLength: undefined,
         _optOut: false,
         partnerId: 'partnerId',
@@ -181,7 +180,7 @@ describe('config', () => {
         serverZone: 'US',
         _sessionId: -1,
         sessionTimeout: 1,
-        storageProvider: new core.MemoryStorage(),
+        storageProvider,
         trackingSessionEvents: false,
         trackingOptions: {
           adid: true,
@@ -197,7 +196,7 @@ describe('config', () => {
           idfv: true,
           country: false,
         },
-        transportProvider: new FetchTransport(),
+        transportProvider: new core.FetchTransport(),
         useBatch: false,
         _userId: 'userIdFromCookies',
         offline: false,
@@ -214,7 +213,7 @@ describe('config', () => {
         getRaw: async () => undefined,
       };
       const localStorageConstructor = jest.spyOn(LocalStorageModule, 'LocalStorage');
-      const cookieStorage = new core.MemoryStorage<UserSession>();
+      const cookieStorage = new core.MemoryStorage<core.UserSession>();
 
       const config = await Config.useReactNativeConfig(API_KEY, {
         cookieStorage,
@@ -252,7 +251,7 @@ describe('config', () => {
     if (isWeb()) {
       test('should return cookies', async () => {
         const storage = await Config.createCookieStorage();
-        expect(storage).toBeInstanceOf(BrowserUtils.CookieStorage);
+        expect(storage).toBeInstanceOf(core.CookieStorage);
       });
     }
 
@@ -262,7 +261,7 @@ describe('config', () => {
     });
 
     test('should use memory', async () => {
-      const cookiesConstructor = jest.spyOn(BrowserUtils, 'CookieStorage').mockReturnValueOnce({
+      const cookiesConstructor = jest.spyOn(core, 'CookieStorage').mockReturnValueOnce({
         options: {},
         config: {},
         isEnabled: async () => false,
@@ -271,7 +270,7 @@ describe('config', () => {
         set: async () => undefined,
         remove: async () => undefined,
         reset: async () => undefined,
-      } as unknown as BrowserUtils.CookieStorage<unknown>);
+      } as unknown as core.CookieStorage<unknown>);
       const localStorageConstructor = jest.spyOn(LocalStorageModule, 'LocalStorage').mockReturnValueOnce({
         isEnabled: async () => false,
         get: async () => '',
@@ -324,7 +323,7 @@ describe('config', () => {
     });
 
     test('should return empty string if no access to cookies', async () => {
-      const testCookieStorage: Storage<number> = {
+      const testCookieStorage: core.Storage<number> = {
         isEnabled: () => Promise.resolve(false),
         get: jest.fn().mockResolvedValueOnce(Promise.resolve(1)),
         getRaw: jest.fn().mockResolvedValueOnce(Promise.resolve(1)),
@@ -332,17 +331,17 @@ describe('config', () => {
         remove: jest.fn().mockResolvedValueOnce(Promise.resolve(undefined)),
         reset: jest.fn().mockResolvedValueOnce(Promise.resolve(undefined)),
       };
-      jest.spyOn(BrowserUtils, 'CookieStorage').mockReturnValueOnce({
+      jest.spyOn(core, 'CookieStorage').mockReturnValueOnce({
         ...testCookieStorage,
         options: {},
         config: {},
-      } as unknown as BrowserUtils.CookieStorage<unknown>);
+      } as unknown as core.CookieStorage<unknown>);
       const domain = await Config.getTopLevelDomain();
       expect(domain).toBe('');
     });
 
     test('should return top level domain', async () => {
-      const testCookieStorage: Storage<number> = {
+      const testCookieStorage: core.Storage<number> = {
         isEnabled: () => Promise.resolve(true),
         get: jest.fn().mockResolvedValueOnce(Promise.resolve(1)),
         getRaw: jest.fn().mockResolvedValueOnce(Promise.resolve(1)),
@@ -350,7 +349,7 @@ describe('config', () => {
         remove: jest.fn().mockResolvedValueOnce(Promise.resolve(undefined)),
         reset: jest.fn().mockResolvedValueOnce(Promise.resolve(undefined)),
       };
-      const actualCookieStorage: Storage<number> = {
+      const actualCookieStorage: core.Storage<number> = {
         isEnabled: () => Promise.resolve(true),
         get: jest.fn().mockResolvedValueOnce(Promise.resolve(undefined)).mockResolvedValueOnce(Promise.resolve(1)),
         getRaw: jest.fn().mockResolvedValueOnce(Promise.resolve(undefined)).mockResolvedValueOnce(Promise.resolve(1)),
@@ -359,17 +358,17 @@ describe('config', () => {
         reset: jest.fn().mockResolvedValue(Promise.resolve(undefined)),
       };
       jest
-        .spyOn(BrowserUtils, 'CookieStorage')
+        .spyOn(core, 'CookieStorage')
         .mockReturnValueOnce({
           ...testCookieStorage,
           options: {},
           config: {},
-        } as unknown as BrowserUtils.CookieStorage<unknown>)
+        } as unknown as core.CookieStorage<unknown>)
         .mockReturnValue({
           ...actualCookieStorage,
           options: {},
           config: {},
-        } as unknown as BrowserUtils.CookieStorage<unknown>);
+        } as unknown as core.CookieStorage<unknown>);
       expect(await Config.getTopLevelDomain('www.legislation.gov.uk')).toBe('.legislation.gov.uk');
     });
 

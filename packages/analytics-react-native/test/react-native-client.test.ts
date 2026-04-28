@@ -21,12 +21,13 @@ describe('react-native-client', () => {
     attribution: {
       disabled: true,
     },
+    logLevel: core.LogLevel.None,
   };
 
   afterEach(async () => {
     // clean up cookies
     // due to jest env, cookies are always preset and needs to be cleaned up
-    document.cookie = 'AMP_API_KEY=null; expires=-1';
+    document.cookie = 'AMP_API_KEY=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
     if (!isWeb()) {
       await new LocalStorage().reset();
     }
@@ -95,6 +96,38 @@ describe('react-native-client', () => {
       // NOTE: `parseOldCookies` and `useNodeConfig` are only called once despite multiple init calls
       expect(parseOldCookies).toHaveBeenCalledTimes(1);
       expect(useNodeConfig).toHaveBeenCalledTimes(1);
+    });
+
+    test('should return the in-flight init promise to concurrent callers', async () => {
+      let resolveCookies: (value: UserSession) => void = () => undefined;
+      const parseOldCookies = jest.spyOn(CookieMigration, 'parseOldCookies').mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveCookies = resolve;
+        }),
+      );
+      const client = new AmplitudeReactNative();
+
+      const firstInit = client.init(API_KEY, USER_ID, {
+        ...attributionConfig,
+      }).promise;
+      const secondInit = client.init(API_KEY, USER_ID, {
+        ...attributionConfig,
+      }).promise;
+      let secondResolved = false;
+      void secondInit.then(() => {
+        secondResolved = true;
+      });
+
+      await Promise.resolve();
+      expect(secondResolved).toBe(false);
+
+      resolveCookies({
+        optOut: false,
+      });
+      await expect(Promise.all([firstInit, secondInit])).resolves.toEqual([undefined, undefined]);
+
+      expect(parseOldCookies).toHaveBeenCalledTimes(1);
+      expect(secondResolved).toBe(true);
     });
 
     test('should allow init to recover after a failed setup attempt', async () => {
@@ -261,6 +294,38 @@ describe('react-native-client', () => {
         },
       });
       expect(track).toHaveBeenCalledTimes(1);
+    });
+
+    test('should clear analytics connector state on shutdown', async () => {
+      const client = new AmplitudeReactNative();
+      await client.init(API_KEY, USER_ID, {
+        deviceId: DEVICE_ID,
+        optOut: false,
+        ...attributionConfig,
+      }).promise;
+
+      const connector = getAnalyticsConnector();
+      expect(connector.identityStore.getIdentity().userId).toBe(USER_ID);
+      expect(connector.identityStore.getIdentity().deviceId).toBe(DEVICE_ID);
+
+      const track = jest.spyOn(client, 'track').mockReturnValue({
+        promise: Promise.resolve({
+          code: 200,
+          message: '',
+          event: {
+            event_type: 'event_type',
+          },
+        }),
+      });
+
+      client.shutdown();
+      connector.eventBridge.logEvent({
+        eventType: 'event_type',
+      });
+
+      expect(track).not.toHaveBeenCalled();
+      expect(connector.identityStore.getIdentity().userId).toBeUndefined();
+      expect(connector.identityStore.getIdentity().deviceId).toBeUndefined();
     });
   });
 
