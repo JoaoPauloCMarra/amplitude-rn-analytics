@@ -1,6 +1,6 @@
 {
   "name": "amplitude-rn-analytics",
-  "version": "1.5.55",
+  "version": "1.5.57",
   "description": "Storage-agnostic React Native analytics SDK for Amplitude services",
   "keywords": [
     "analytics",
