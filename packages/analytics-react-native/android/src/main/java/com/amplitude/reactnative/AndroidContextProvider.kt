@@ -12,8 +12,11 @@ import java.lang.reflect.InvocationTargetException
 import java.util.Locale
 import java.util.UUID
 
-class AndroidContextProvider(private val context: Context, shouldTrackAdid: Boolean) {
-  var shouldTrackAdid = true
+class AndroidContextProvider(
+  private val context: Context,
+  private val shouldTrackAdid: Boolean,
+  private val shouldTrackAppSetId: Boolean
+) {
   private var cachedInfo: CachedInfo? = null
     get() {
       if (field == null) {
@@ -159,6 +162,10 @@ class AndroidContextProvider(private val context: Context, shouldTrackAdid: Bool
     }
 
     private fun fetchAppSetId(): String {
+      if (!shouldTrackAppSetId) {
+        return ""
+      }
+
       try {
         val AppSet = Class
           .forName("com.google.android.gms.appset.AppSet")
@@ -300,9 +307,5 @@ class AndroidContextProvider(private val context: Context, shouldTrackAdid: Bool
     fun generateUUID(): String {
       return UUID.randomUUID().toString()
     }
-  }
-
-  init {
-    this.shouldTrackAdid = shouldTrackAdid
   }
 }

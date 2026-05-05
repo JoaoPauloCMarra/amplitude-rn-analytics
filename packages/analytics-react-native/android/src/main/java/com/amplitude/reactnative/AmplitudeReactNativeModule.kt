@@ -31,8 +31,9 @@ class AmplitudeReactNativeModule(private val reactContext: ReactApplicationConte
     private fun getApplicationContext(options: ReadableMap, promise: Promise) {
         try {
             val trackAdid = if (options.hasKey("adid")) options.getBoolean("adid") else false
+            val trackAppSetId = if (options.hasKey("appSetId")) options.getBoolean("appSetId") else false
             if (androidContextProvider == null) {
-                androidContextProvider = AndroidContextProvider(reactContext.applicationContext, trackAdid)
+                androidContextProvider = AndroidContextProvider(reactContext.applicationContext, trackAdid, trackAppSetId)
             }
 
             promise.resolve(WritableNativeMap().apply {
@@ -49,7 +50,9 @@ class AmplitudeReactNativeModule(private val reactContext: ReactApplicationConte
                 if (trackAdid) {
                     putString("adid", androidContextProvider!!.advertisingId)
                 }
-                putString("appSetId", androidContextProvider!!.appSetId)
+                if (trackAppSetId) {
+                    putString("appSetId", androidContextProvider!!.appSetId)
+                }
             })
         } catch (e: Exception) {
             LogcatLogger.logger.error(
