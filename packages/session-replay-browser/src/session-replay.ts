@@ -98,6 +98,7 @@ export class SessionReplay implements AmplitudeSessionReplay {
   // Cache the dynamically imported record function
   private recordFunction: RecordFunction | null = null;
   private recordEventsInFlight = false;
+  private pendingEmitEvents: Array<{ event: eventWithTime; sessionId: string | number }> = [];
 
   /** Current page URL, kept in sync with SPA navigations for URL-based masking */
   private currentPageUrl = '';
@@ -291,6 +292,15 @@ export class SessionReplay implements AmplitudeSessionReplay {
       () => this.sendEvents(),
     );
 
+    // Flush any events that arrived while eventCompressor was not yet ready
+    // (e.g. a concurrent setSessionId() call that raced _init()'s async setup).
+    if (this.pendingEmitEvents.length > 0) {
+      const pending = this.pendingEmitEvents.splice(0);
+      for (const { event, sessionId } of pending) {
+        this.eventCompressor.enqueueEvent(event, sessionId);
+      }
+    }
+
     // Register beacon fallback for page exit. sendBeacon survives page unload
     // and delivers any incremental events that haven't been flushed via fetch yet.
     this.pageLeaveFns = [
@@ -443,6 +453,10 @@ export class SessionReplay implements AmplitudeSessionReplay {
    * prevent duplicate listener actions from firing.
    */
   private pageLeaveListener = (e: PageTransitionEvent | Event) => {
+    // Synchronously drain any events still queued in the requestIdleCallback
+    // pipeline so they are available to send before the page unloads.
+    this.eventCompressor?.flushQueue();
+    this.sendEvents();
     this.pageLeaveFns.forEach((fn) => {
       fn(e);
     });
@@ -855,6 +869,10 @@ export class SessionReplay implements AmplitudeSessionReplay {
             if (this.eventCompressor) {
               // Schedule processing during idle time if the browser supports requestIdleCallback
               this.eventCompressor.enqueueEvent(event, sessionId);
+            } else {
+              // eventCompressor is not yet ready (concurrent call racing _init()).
+              // Buffer the event so it can be flushed once the compressor is initialized.
+              this.pendingEmitEvents.push({ event, sessionId });
             }
           },
           'Error while capturing replay: ',
@@ -899,11 +917,22 @@ export class SessionReplay implements AmplitudeSessionReplay {
       maskTextFn: maskFn('text', privacyConfig, () => this.currentPageUrl),
       maskAttributeFn: maskAttributeFn(privacyConfig, () => this.currentPageUrl),
       maskTextSelector: this.getMaskTextSelectors(),
+      ...(config.fullSnapshotIntervalMs !== undefined && { checkoutEveryNms: config.fullSnapshotIntervalMs }),
       recordCanvas: false,
       captureAdoptedStyleSheets: config.captureAdoptedStyleSheets,
+      // Strip nodes that are never rendered by the rrweb replay player.
+      // None of these affect visual fidelity; omitting them reduces snapshot size.
       slimDOMOptions: {
-        script: config.omitElementTags?.script,
-        comment: config.omitElementTags?.comment,
+        script: true,
+        comment: true,
+        headFavicon: true,
+        headWhitespace: true,
+        headMetaDescKeywords: true,
+        headMetaSocial: true,
+        headMetaRobots: true,
+        headMetaHttpEquiv: true,
+        headMetaAuthorship: true,
+        headMetaVerification: true,
       },
       errorHandler: (error: unknown) => {
         const typedError = error as Error & { _external_?: boolean };

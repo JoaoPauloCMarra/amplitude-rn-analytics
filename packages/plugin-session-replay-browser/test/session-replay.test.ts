@@ -134,6 +134,22 @@ describe('SessionReplayPlugin', () => {
       expect(sessionReplay.config).toBeDefined();
     });
 
+    test('should pass storeType through to session replay (undefined when not set)', async () => {
+      const sessionReplay = new SessionReplayPlugin();
+
+      await sessionReplay.setup?.(mockConfig, mockAmplitude);
+
+      expect(init).toHaveBeenCalledWith('static_key', expect.objectContaining({ storeType: undefined }));
+    });
+
+    test('should use explicitly provided storeType', async () => {
+      const sessionReplay = new SessionReplayPlugin({ storeType: 'idb' });
+
+      await sessionReplay.setup?.(mockConfig, mockAmplitude);
+
+      expect(init).toHaveBeenCalledWith('static_key', expect.objectContaining({ storeType: 'idb' }));
+    });
+
     describe('defaultTracking', () => {
       test('should not change defaultTracking when forceSessionTracking is not defined', async () => {
         const sessionReplay = new SessionReplayPlugin();
@@ -376,6 +392,19 @@ describe('SessionReplayPlugin', () => {
       expect(init.mock.calls[0][1]).toEqual(
         expect.objectContaining({
           useWebWorker: true,
+        }),
+      );
+    });
+
+    test('should forward crossOriginIframes to session-replay SDK', async () => {
+      const crossOriginIframes = { enabled: true, coordinateChildren: false };
+      const sessionReplay = new SessionReplayPlugin({ crossOriginIframes });
+      await sessionReplay.setup?.(mockConfig, mockAmplitude);
+
+      expect(init).toHaveBeenCalledTimes(1);
+      expect(init.mock.calls[0][1]).toEqual(
+        expect.objectContaining({
+          crossOriginIframes,
         }),
       );
     });
