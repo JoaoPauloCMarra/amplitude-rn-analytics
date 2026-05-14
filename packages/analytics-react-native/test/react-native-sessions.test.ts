@@ -14,9 +14,9 @@ describe('react-native-session', () => {
   };
 
   afterEach(async () => {
-    // clean up cookies
-    // due to jest env, cookies are always preset and needs to be cleaned up
-    document.cookie = 'AMP_API_KEY=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+    if (typeof document !== 'undefined') {
+      document.cookie = 'AMP_API_KEY=null; expires=-1';
+    }
     if (!isWeb()) {
       await new LocalStorage().reset();
     }

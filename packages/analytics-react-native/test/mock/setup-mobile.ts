@@ -8,10 +8,12 @@ Platform.OS = 'ios';
 /*
  * Mock navigator. This is what the navigator looks like on mobile
  */
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 // eslint-disable-next-line no-restricted-globals
-window['navigator'] = { product: 'ReactNative' };
+Object.defineProperty(globalThis, 'navigator', {
+  value: { product: 'ReactNative' },
+  configurable: true,
+  writable: true,
+});
 
 /*
  * Mock Native Module
@@ -24,10 +26,14 @@ NativeModules.AmplitudeReactNative = {
       osName: 'iOS',
       osVersion: 'react-native-tests',
       language: 'react-native-tests',
+      country: 'react-native-tests',
       deviceBrand: 'react-native-tests',
       deviceManufacturer: 'react-native-tests',
       deviceModel: 'react-native-tests',
       carrier: 'react-native-tests',
+      adid: 'react-native-tests',
+      appSetId: 'react-native-tests',
+      idfv: 'react-native-tests',
     };
   },
   getLegacySessionData: () => ({}),

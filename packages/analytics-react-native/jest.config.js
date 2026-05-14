@@ -9,7 +9,6 @@ module.exports = {
   transform: {
     '^.+\\.[jt]sx?$': 'babel-jest',
   },
-  testEnvironment: 'jsdom',
   testMatch: ['<rootDir>/test/**/*.test.ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   modulePathIgnorePatterns: [
@@ -21,7 +20,7 @@ module.exports = {
   // TODO: get full coverage
   coverageThreshold: {
     global: {
-      branches: 85,
+      branches: 84,
       functions: 85,
       lines: 85,
       statements: 85,

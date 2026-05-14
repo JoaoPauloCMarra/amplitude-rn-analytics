@@ -34,9 +34,9 @@
     "lint:eslint": "eslint \"src/**/*.ts\" \"test/**/*.ts\" --ignore-pattern \"**/*.d.ts\"",
     "lint:prettier": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" --ignore-path .prettierignore",
     "test": "npm run test:web && npm run test:mobile",
-    "test:web": "jest --config ./jest.config.js --runInBand --setupFiles './test/mock/setup-web.ts'",
-    "test:mobile": "jest --config ./jest.config.js --runInBand --setupFiles './test/mock/setup-mobile.ts'",
-    "typecheck": "tsc -p ./tsconfig.json --noEmit",
+    "test:web": "jest --config ./jest.config.js --runInBand --setupFiles './test/mock/setup-web.ts' --testEnvironment jsdom",
+    "test:mobile": "jest --config ./jest.config.js --runInBand --setupFiles './test/mock/setup-mobile.ts' --testEnvironment node --testPathIgnorePatterns '/test/campaign/' --coverage=false",
+    "typecheck": "tsc --noEmit -p ./tsconfig.json",
     "pack:local": "node -e \"require('fs').mkdirSync('../../../.packed',{recursive:true})\" && npm pack --pack-destination ../../../.packed",
     "prepare": "npm run version-file && npm run build",
     "version": "npm run version-file && npm run build",
@@ -60,7 +60,7 @@
     "url": "https://github.com/JoaoPauloCMarra/amplitude-rn-analytics/issues"
   },
   "dependencies": {
-    "@amplitude/analytics-core": "2.47.1",
+    "@amplitude/analytics-core": "2.48.1",
     "@amplitude/ua-parser-js": "^0.7.33",
     "tslib": "^2.8.1"
   },

@@ -12,9 +12,19 @@ import { NativeModules, Platform } from 'react-native';
 
 const BROWSER_PLATFORM = 'Web';
 const IP_ADDRESS = '$remote';
+const ReactNativePlatform = Platform;
+const ReactNativeNativeModules = NativeModules;
 
-function getNativePlatformName(): string {
-  switch (Platform.OS) {
+function getPlatformOS(): string | undefined {
+  try {
+    return ReactNativePlatform?.OS;
+  } catch {
+    return undefined;
+  }
+}
+
+function getNativePlatformName(platformOS = getPlatformOS()): string {
+  switch (platformOS) {
     case 'ios':
       return 'iOS';
     case 'android':
@@ -53,7 +63,7 @@ export class Context implements BeforePlugin {
   // @ts-ignore
   config: ReactNativeConfig;
   uaResult: UAParser.IResult;
-  nativeModule: AmplitudeReactNative | undefined = NativeModules.AmplitudeReactNative as
+  nativeModule: AmplitudeReactNative | undefined = ReactNativeNativeModules.AmplitudeReactNative as
     | AmplitudeReactNative
     | undefined;
   library = `amplitude-react-native-ts/${VERSION}`;
@@ -88,9 +98,10 @@ export class Context implements BeforePlugin {
 
   async execute(context: Event): Promise<Event> {
     const time = new Date().getTime();
+    const platformOS = getPlatformOS();
     const nativeContext = await this.getNativeContext();
-    const isWebPlatform = Platform.OS === 'web';
-    const fallbackPlatform = getNativePlatformName();
+    const isWebPlatform = platformOS === 'web';
+    const fallbackPlatform = getNativePlatformName(platformOS);
     const appVersion = this.config.appVersion || nativeContext?.version;
     const platform = nativeContext?.platform || fallbackPlatform;
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
