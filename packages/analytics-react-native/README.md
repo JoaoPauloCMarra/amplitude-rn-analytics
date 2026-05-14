@@ -2,15 +2,31 @@
 
 Storage-agnostic React Native analytics SDK compatible with Amplitude services.
 
-This fork removes the hard dependency on `@react-native-async-storage/async-storage`.
-It ships with a built-in shared memory storage fallback and keeps the upstream
-custom `storageProvider` hook so apps can inject persistent storage.
+This package is a focused fork of `@amplitude/analytics-react-native`. It keeps
+the upstream analytics API shape, but removes the required
+`@react-native-async-storage/async-storage` dependency and lets apps choose the
+storage backend that fits their runtime.
 
 ## Install
 
 ```sh
 npm install amplitude-rn-analytics
 ```
+
+## Improvements over the original package
+
+- No required AsyncStorage dependency.
+- Built-in shared memory storage fallback.
+- Custom persistent storage through the upstream `storageProvider` option.
+- `MemoryStorage` and `InMemoryStorage` exports for explicit memory-backed use.
+- `LocalStorage` retained as a compatibility alias for the memory fallback.
+- `shutdown()` API for listener, timer, queue, timeline, and connector cleanup.
+- Safer failed-init cleanup so startup errors do not leave stale AppState
+  listeners behind.
+- Safer legacy event migration that removes old native events only after the new
+  event storage write succeeds.
+- Native context collection and legacy database migration support retained from
+  the original React Native SDK.
 
 ## Default storage behavior
 
@@ -92,21 +108,36 @@ amplitude.init(API_KEY, undefined, {
 - `MemoryStorage`
 - `LocalStorage`
 
-`LocalStorage` remains as a compatibility alias.
-
 `MemoryStorage` and `InMemoryStorage` are the preferred names for the built-in
-shared in-memory storage implementation in this fork.
+shared in-memory storage implementation in this fork. `LocalStorage` remains as
+a compatibility alias.
+
+## Lifecycle cleanup
+
+Call `shutdown()` when a client instance is no longer needed, especially in
+tests, hot-reload flows, or host apps that create and dispose multiple
+instances.
+
+```ts
+import { createInstance } from 'amplitude-rn-analytics';
+
+const analytics = createInstance();
+
+await analytics.init(API_KEY).promise;
+analytics.track('Screen Viewed');
+analytics.shutdown();
+```
 
 ## Upstream compatibility
 
-The public analytics API stays close to the upstream React Native SDK. The
-main behavioral difference is the default storage backend: this fork defaults
-to memory instead of AsyncStorage.
+The public analytics API stays close to the upstream React Native SDK. The main
+behavioral difference is the default storage backend: this fork defaults to
+memory instead of AsyncStorage.
 
 ## Fork lineage
 
 - upstream base: `@amplitude/analytics-react-native@1.5.52`
-- fork release: `amplitude-rn-analytics@1.5.54`
+- fork release: `amplitude-rn-analytics@1.5.57`
 
 ## Validation matrix
 
@@ -118,4 +149,6 @@ to memory instead of AsyncStorage.
 | Built-in memory storage | regression tests |
 | Custom `storageProvider` | regression tests |
 | Init recovery after failed startup | regression tests |
+| Lifecycle shutdown cleanup | regression tests |
+| Legacy event migration safety | regression tests |
 | Native context fallback | regression tests |

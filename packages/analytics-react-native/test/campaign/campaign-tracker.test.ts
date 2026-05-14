@@ -108,12 +108,12 @@ describe('campaign-tracker', () => {
     expect(
       tracker.isNewCampaign(
         createCampaign({
-          referrer: 'https://sub.goodword.com/path',
-          referring_domain: 'sub.goodword.com',
+          referrer: 'https://sub.example-app.com/path',
+          referring_domain: 'sub.example-app.com',
         }),
         createCampaign({
-          referrer: 'https://api.goodword.com/path',
-          referring_domain: 'api.goodword.com',
+          referrer: 'https://api.example-app.com/path',
+          referring_domain: 'api.example-app.com',
         }),
         true,
       ),
@@ -121,8 +121,8 @@ describe('campaign-tracker', () => {
     expect(
       tracker.isNewCampaign(
         createCampaign({
-          referrer: 'https://api.goodword.com/path',
-          referring_domain: 'api.goodword.com',
+          referrer: 'https://api.example-app.com/path',
+          referring_domain: 'api.example-app.com',
         }),
         createCampaign({
           referrer: 'https://example.com/path',
