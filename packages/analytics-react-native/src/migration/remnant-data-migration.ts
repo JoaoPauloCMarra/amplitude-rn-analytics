@@ -69,6 +69,15 @@ export default class RemnantDataMigration {
     }
   }
 
+  private async callStorageFunction<T>(action: () => Promise<T>): Promise<{ value: T } | undefined> {
+    try {
+      return { value: await action() };
+    } catch (e) {
+      this.logger?.error(`can't call storage function: ${String(e)}`);
+      return undefined;
+    }
+  }
+
   private async moveLegacyEvents(eventKind: LegacyEventKind) {
     const legacyJsonEvents = await this.callNativeFunction(() =>
       this.nativeModule.getLegacyEvents(this.instanceName, eventKind),
@@ -77,7 +86,13 @@ export default class RemnantDataMigration {
       return;
     }
 
-    const events = (await this.storage.get(this.eventsStorageKey)) ?? [];
+    const existingEvents = await this.callStorageFunction<Event[] | undefined>(async () => {
+      return this.storage?.get(this.eventsStorageKey);
+    });
+    if (!existingEvents) {
+      return;
+    }
+    const events: Event[] = existingEvents.value ?? [];
     const eventIds: number[] = [];
 
     legacyJsonEvents.forEach((jsonEvent) => {
@@ -90,7 +105,13 @@ export default class RemnantDataMigration {
       }
     });
 
-    await this.storage.set(this.eventsStorageKey, events);
+    const writeSucceeded = await this.callStorageFunction(async () => {
+      await this.storage?.set(this.eventsStorageKey, events);
+      return true;
+    });
+    if (!writeSucceeded?.value) {
+      return;
+    }
     eventIds.forEach((eventId) =>
       this.callNativeAction(() => this.nativeModule.removeLegacyEvent(this.instanceName, eventKind, eventId)),
     );

@@ -20,6 +20,7 @@ import {
   setOptOut,
   setSessionId,
   setUserId,
+  shutdown,
   track,
 } from '../src/index';
 
@@ -46,6 +47,8 @@ describe('index', () => {
     expect(typeof setOptOut).toBe('function');
     expect(typeof setSessionId).toBe('function');
     expect(typeof setUserId).toBe('function');
+    expect(typeof shutdown).toBe('function');
     expect(typeof track).toBe('function');
+    expect(typeof createInstance().shutdown).toBe('function');
   });
 });

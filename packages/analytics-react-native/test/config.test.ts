@@ -60,6 +60,36 @@ describe('config', () => {
         storageProvider: undefined,
       });
     });
+
+    test('should log rejected user session persistence writes', async () => {
+      const loggerProvider = {
+        disable: jest.fn(),
+        enable: jest.fn(),
+        log: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn(),
+      };
+      const cookieStorage = {
+        isEnabled: async () => true,
+        get: async () => undefined,
+        getRaw: async () => undefined,
+        set: jest.fn().mockRejectedValue(new Error('storage failed')),
+        remove: async () => undefined,
+        reset: async () => undefined,
+      };
+      const config = new Config.ReactNativeConfig(API_KEY, {
+        cookieStorage,
+        loggerProvider,
+      });
+
+      config.deviceId = 'new-device-id';
+      await Promise.resolve();
+
+      expect(loggerProvider.error).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to persist user session: Error: storage failed'),
+      );
+    });
   });
 
   describe('useBrowserConfig', () => {

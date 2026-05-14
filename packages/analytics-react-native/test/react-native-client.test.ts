@@ -296,6 +296,36 @@ describe('react-native-client', () => {
       expect(track).toHaveBeenCalledTimes(1);
     });
 
+    test('should log rejected event bridge tracks', async () => {
+      const loggerError = jest.fn();
+      const loggerProvider = {
+        disable: jest.fn(),
+        enable: jest.fn(),
+        log: jest.fn(),
+        warn: jest.fn(),
+        error: loggerError,
+        debug: jest.fn(),
+      };
+      const client = new AmplitudeReactNative();
+      await client.init(API_KEY, USER_ID, {
+        optOut: false,
+        loggerProvider,
+        ...attributionConfig,
+      }).promise;
+      jest.spyOn(client, 'track').mockReturnValueOnce({
+        promise: Promise.reject(new Error('bridge failed')),
+      });
+
+      getAnalyticsConnector().eventBridge.logEvent({
+        eventType: 'event_type',
+      });
+      await Promise.resolve();
+
+      expect(loggerError).toHaveBeenCalledWith(
+        expect.stringContaining('Internal track call failed: Error: bridge failed'),
+      );
+    });
+
     test('should clear analytics connector state on shutdown', async () => {
       const client = new AmplitudeReactNative();
       await client.init(API_KEY, USER_ID, {
@@ -326,6 +356,71 @@ describe('react-native-client', () => {
       expect(track).not.toHaveBeenCalled();
       expect(connector.identityStore.getIdentity().userId).toBeUndefined();
       expect(connector.identityStore.getIdentity().deviceId).toBeUndefined();
+    });
+
+    test('should not clear a newer connector receiver when an older client shuts down', async () => {
+      const firstClient = new AmplitudeReactNative();
+      const secondClient = new AmplitudeReactNative();
+      await firstClient.init(API_KEY, 'first-user', {
+        deviceId: 'first-device',
+        optOut: false,
+        ...attributionConfig,
+      }).promise;
+      await secondClient.init(API_KEY, 'second-user', {
+        deviceId: 'second-device',
+        optOut: false,
+        ...attributionConfig,
+      }).promise;
+
+      const secondTrack = jest.spyOn(secondClient, 'track').mockReturnValue({
+        promise: Promise.resolve({
+          code: 200,
+          message: '',
+          event: {
+            event_type: 'event_type',
+          },
+        }),
+      });
+      const connector = getAnalyticsConnector();
+
+      firstClient.shutdown();
+      connector.eventBridge.logEvent({
+        eventType: 'event_type',
+      });
+
+      expect(secondTrack).toHaveBeenCalledTimes(1);
+      expect(connector.identityStore.getIdentity().userId).toBe('second-user');
+      expect(connector.identityStore.getIdentity().deviceId).toBe('second-device');
+
+      secondClient.shutdown();
+    });
+
+    test('should clear scheduled destination work on shutdown', async () => {
+      jest.useFakeTimers();
+      const client = new AmplitudeReactNative();
+      await client.init(API_KEY, USER_ID, {
+        optOut: false,
+        ...attributionConfig,
+      }).promise;
+      const resetSchedule = jest.fn();
+      const scheduledDestination = {
+        name: 'scheduled-destination',
+        type: 'destination' as const,
+        scheduleId: setTimeout(jest.fn(), 1000),
+        flushId: setTimeout(jest.fn(), 1000),
+        queue: [{}],
+        resetSchedule,
+        execute: jest.fn(),
+      };
+      client.timeline.plugins.push(scheduledDestination);
+
+      client.shutdown();
+
+      expect(resetSchedule).toHaveBeenCalledTimes(1);
+      expect(scheduledDestination.flushId).toBeNull();
+      expect(scheduledDestination.queue).toEqual([]);
+      expect(client.timeline.plugins).toEqual([]);
+      jest.useRealTimers();
     });
   });
 

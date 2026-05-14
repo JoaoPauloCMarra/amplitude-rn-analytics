@@ -19,6 +19,7 @@ export const {
   setOptOut,
   setSessionId,
   setUserId,
+  shutdown,
   track,
   extendSession,
 } = client;

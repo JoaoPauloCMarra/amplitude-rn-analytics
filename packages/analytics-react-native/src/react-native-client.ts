@@ -32,10 +32,25 @@ import { isNative } from './utils/platform';
 const START_SESSION_EVENT = 'session_start';
 const END_SESSION_EVENT = 'session_end';
 
+type ScheduledDestination = {
+  scheduleId?: ReturnType<typeof setTimeout> | null;
+  flushId?: ReturnType<typeof setTimeout> | null;
+  queue?: unknown[];
+  resetSchedule?: () => void;
+};
+
+export type AmplitudeReactNativeClient = ReactNativeClient & {
+  shutdown: () => void;
+};
+
+let nextConnectorOwnerId = 0;
+let activeConnectorOwnerId: number | undefined;
+
 export class AmplitudeReactNative extends AmplitudeCore implements ReactNativeClient, AnalyticsClient {
   appState: AppStateStatus = 'background';
   private appStateChangeHandler: NativeEventSubscription | undefined;
   private initPromise: Promise<void> | undefined;
+  private readonly connectorOwnerId = ++nextConnectorOwnerId;
   explicitSessionId: number | undefined;
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
@@ -109,8 +124,9 @@ export class AmplitudeReactNative extends AmplitudeCore implements ReactNativeCl
 
       // Step 7: Add the event receiver after running remaining queued functions.
       connector.eventBridge.setEventReceiver((event) => {
-        void this.track(event.eventType, event.eventProperties);
+        this.handleInternalTrackPromise(this.track(event.eventType, event.eventProperties).promise);
       });
+      activeConnectorOwnerId = this.connectorOwnerId;
     } catch (error) {
       if (appStateHandlerInstalled) {
         this.appStateChangeHandler?.remove();
@@ -126,9 +142,43 @@ export class AmplitudeReactNative extends AmplitudeCore implements ReactNativeCl
     this.appStateChangeHandler?.remove();
     this.appStateChangeHandler = undefined;
 
-    const connector = getAnalyticsConnector();
-    connector.eventBridge.setEventReceiver(() => undefined);
-    connector.identityStore.setIdentity({});
+    this.cancelDestinationFlushes();
+    this.timeline.reset(this);
+    this.q = [];
+    this.dispatchQ = [];
+    this.isReady = false;
+
+    if (activeConnectorOwnerId === this.connectorOwnerId) {
+      const connector = getAnalyticsConnector();
+      connector.eventBridge.setEventReceiver(() => undefined);
+      connector.identityStore.setIdentity({});
+      activeConnectorOwnerId = undefined;
+    }
+  }
+
+  private handleInternalTrackPromise(promise: Promise<unknown>) {
+    void promise.catch((error) => {
+      this.config?.loggerProvider?.error(`Internal track call failed: ${String(error)}`);
+    });
+  }
+
+  private cancelDestinationFlushes() {
+    this.timeline.plugins.forEach((plugin) => {
+      if (plugin.type !== 'destination') {
+        return;
+      }
+
+      const destination = plugin as ScheduledDestination;
+      if (destination.scheduleId) {
+        clearTimeout(destination.scheduleId);
+      }
+      if (destination.flushId) {
+        clearTimeout(destination.flushId);
+      }
+      destination.resetSchedule?.();
+      destination.flushId = null;
+      destination.queue = [];
+    });
   }
 
   async runAttributionStrategy(attributionConfig?: AttributionOptions, isNewSession = false) {
@@ -241,7 +291,7 @@ export class AmplitudeReactNative extends AmplitudeCore implements ReactNativeCl
           time: this.config.lastEventTime !== undefined ? this.config.lastEventTime + 1 : sessionId, // increment lastEventTime to sort events properly in UI - session_end should be the last event in a session
           session_id: previousSessionId,
         };
-        void this.track(sessionEndEvent);
+        this.handleInternalTrackPromise(this.track(sessionEndEvent).promise);
       }
 
       this.config.loggerProvider?.log(`SESSION_START event: sessionId = ${sessionId}`);
@@ -250,7 +300,7 @@ export class AmplitudeReactNative extends AmplitudeCore implements ReactNativeCl
         time: eventTime,
         session_id: sessionId,
       };
-      void this.track(sessionStartEvent);
+      this.handleInternalTrackPromise(this.track(sessionStartEvent).promise);
     }
 
     this.config.lastEventTime = eventTime;
@@ -352,7 +402,7 @@ export class AmplitudeReactNative extends AmplitudeCore implements ReactNativeCl
   }
 }
 
-export const createInstance = (): ReactNativeClient => {
+export const createInstance = (): AmplitudeReactNativeClient => {
   const client = new AmplitudeReactNative();
   return {
     init: debugWrapper(
@@ -468,6 +518,12 @@ export const createInstance = (): ReactNativeClient => {
       'setOptOut',
       getClientLogConfig(client),
       getClientStates(client, ['config']),
+    ),
+    shutdown: debugWrapper(
+      client.shutdown.bind(client),
+      'shutdown',
+      getClientLogConfig(client),
+      getClientStates(client, ['config', 'timeline.plugins']),
     ),
   };
 };

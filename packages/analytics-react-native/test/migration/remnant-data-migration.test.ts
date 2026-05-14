@@ -242,4 +242,38 @@ describe('migration', () => {
 
     expect(removeLegacyEvent.mock.calls).toEqual([]);
   }, 10000);
+
+  test('should keep legacy events when storage migration write fails', async () => {
+    const client = new AmplitudeReactNative();
+    const loggerProvider = {
+      disable: jest.fn(),
+      enable: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    };
+    const storageProvider = {
+      isEnabled: async () => true,
+      get: async () => [],
+      getRaw: async () => undefined,
+      set: jest.fn().mockRejectedValue(new Error('storage write failed')),
+      remove: async () => undefined,
+      reset: async () => undefined,
+    };
+
+    await client.init('TEST_API_KEY', undefined, {
+      disableCookies: true,
+      cookieStorage: new MemoryStorage(),
+      storageProvider,
+      loggerProvider,
+      instanceName: 'test-instance',
+    }).promise;
+
+    expect(storageProvider.set).toHaveBeenCalled();
+    expect(removeLegacyEvent).not.toHaveBeenCalled();
+    expect(loggerProvider.error).toHaveBeenCalledWith(
+      expect.stringContaining("can't call storage function: Error: storage write failed"),
+    );
+  });
 });

@@ -179,7 +179,13 @@ export class ReactNativeConfig extends Config implements IReactNativeConfig {
       lastEventTime: this._lastEventTime,
       lastEventId: this._lastEventId,
     };
-    void this.cookieStorage?.set(getCookieName(this.apiKey), cache);
+    try {
+      void this.cookieStorage?.set(getCookieName(this.apiKey), cache).catch((error) => {
+        this.loggerProvider?.error(`Failed to persist user session: ${String(error)}`);
+      });
+    } catch (error) {
+      this.loggerProvider?.error(`Failed to persist user session: ${String(error)}`);
+    }
   }
 }
 

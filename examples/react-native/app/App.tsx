@@ -1,13 +1,7 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import {useCallback, useEffect, useMemo} from 'react';
+import type {JSX} from 'react';
 import {
+  Button,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -15,99 +9,115 @@ import {
   Text,
   useColorScheme,
   View,
-  Button
 } from 'react-native';
 import Toast from 'react-native-toast-message';
-import {
-  Identify,
-  Types,
-  identify,
-  init,
-  track,
-} from 'amplitude-rn-analytics';
+import {Identify, Types, identify, init, track} from 'amplitude-rn-analytics';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
-
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
-
-init('API_KEY', 'example_user_id', {
-    logLevel: Types.LogLevel.Verbose,
-});
-
-function App(): React.JSX.Element {
+function App(): JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
+  const backgroundStyle = useMemo(
+    () => ({
+      backgroundColor: isDarkMode ? '#111827' : '#f9fafb',
+    }),
+    [isDarkMode],
+  );
+  const contentStyle = useMemo(
+    () => ({
+      backgroundColor: isDarkMode ? '#030712' : '#ffffff',
+    }),
+    [isDarkMode],
+  );
+  const textStyle = useMemo(
+    () => ({
+      color: isDarkMode ? '#f9fafb' : '#111827',
+    }),
+    [isDarkMode],
+  );
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter
-  };
+  const showToast = useCallback(
+    (message: string, type: 'success' | 'error' = 'success') => {
+      Toast.show({
+        type,
+        text1: type === 'success' ? 'Amplitude Response' : 'Amplitude Error',
+        text2: message,
+      });
+    },
+    [],
+  );
 
-  const showToast = (message: string) => {
-    Toast.show({
-      type: 'success',
-      text1: 'Amplitude Response',
-      text2: message
+  useEffect(() => {
+    void init('API_KEY', 'example_user_id', {
+      logLevel: Types.LogLevel.Verbose,
+    }).promise.catch((error: unknown) => {
+      showToast(String(error), 'error');
     });
-  }
+  }, [showToast]);
 
-  const trackEventAndShowToast = (eventName: string) => {
-    track(eventName).promise.then((e) => {
-      showToast(e.message);
-    })
-  }
+  const trackEventAndShowToast = useCallback(
+    async (eventName: string) => {
+      try {
+        const result = await track(eventName).promise;
+        showToast(result.message || `Tracked ${eventName}`);
+      } catch (error) {
+        showToast(String(error), 'error');
+      }
+    },
+    [showToast],
+  );
 
+  const trackIdentifyAndShowToast = useCallback(async () => {
+    try {
+      const result = await identify(
+        new Identify().set('react-native-test', 'yes'),
+      ).promise;
+      showToast(result.message || 'Identify tracked');
+    } catch (error) {
+      showToast(String(error), 'error');
+    }
+  }, [showToast]);
 
-  const trackIdentifyAndShowToast = (eventName: string) => {
-    identify(new Identify().set('react-native-test', 'yes')).promise.then((e) => {
-      showToast(e.message);
-    })
-  }
   return (
-    <SafeAreaView style={backgroundStyle}>
+    <SafeAreaView style={[styles.container, backgroundStyle]}>
       <StatusBar
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
         backgroundColor={backgroundStyle.backgroundColor}
       />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View style={{gap: 10}}>
-          <Text style={{textAlign: 'center', color: 'black'}}>Test Amplitude App</Text>
-          <Button title="Track Event" onPress={() => trackEventAndShowToast('test_event')}></Button>
-          <Button title="Track Identify" onPress={() => trackIdentifyAndShowToast('test_event')}></Button>
+        style={backgroundStyle}
+        contentContainerStyle={styles.content}>
+        <View style={[styles.panel, contentStyle]}>
+          <Text style={[styles.title, textStyle]}>Test Amplitude App</Text>
+          <Button
+            title="Track Event"
+            onPress={() => void trackEventAndShowToast('test_event')}
+          />
+          <Button
+            title="Track Identify"
+            onPress={() => void trackIdentifyAndShowToast()}
+          />
         </View>
       </ScrollView>
-      <Toast></Toast>
-      
+      <Toast />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-    gap: 10
+  container: {
+    flex: 1,
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
+  content: {
+    padding: 24,
   },
-  sectionDescription: {
-    marginTop: 8,
+  panel: {
+    gap: 12,
+    padding: 16,
+  },
+  title: {
     fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 
