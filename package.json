@@ -11,11 +11,8 @@
     "clean": "lerna run clean --stream && rimraf node_modules docs",
     "deploy:version": "lerna version",
     "deploy:version:dry-run": "DRY_RUN=true lerna version --no-push --no-git-tag-version --allow-branch \"$(git rev-parse --abbrev-ref HEAD)\" --conventional-prerelease --no-changelog --no-push --no-git-tag-version",
-    "deploy:publish": "pnpm -r --filter \"./packages/**\" publish --no-git-checks",
-    "deploy:publish:dry-run": "DRY_RUN=true pnpm -r --filter \"./packages/**\" publish --dry-run --no-git-checks",
-    "deploy:pack": "DRY_RUN=true pnpm -r --filter \"./packages/**\" pack",
-    "dev": "concurrently \"pnpm run watch\" \"vite dev --open\"",
-    "dev:ssh": "pnpm run setup-dev-ssh && export SSH=true && pnpm run dev",
+    "dev": "concurrently \"bun run watch\" \"vite dev --open\"",
+    "dev:ssh": "bun run setup-dev-ssh && export SSH=true && bun run dev",
     "docs": "typedoc",
     "docs:check": "typedoc --emit none",
     "fix": "lerna run fix --stream",
@@ -36,8 +33,8 @@
     "test:examples": "jest --env=jsdom --coverage=false examples --setupFiles ./jest.setup.examples.js",
     "test:unit": "lerna run test --stream --ignore @amplitude/analytics-*-test",
     "test:e2e": "lerna run test --stream --scope @amplitude/analytics-*-test",
-    "test:e2e:remote-config": "pnpm build:vite && concurrently --kill-others --success first \"sh packages/e2e-remote-config/remote-config-test.sh\" \"pnpm start -- --port 5173 --clearScreen=false\"",
-    "test:e2e:remote-config:staging": "pnpm build:vite && concurrently --kill-others --success first \"sh packages/e2e-remote-config/remote-config-test-staging.sh\" \"pnpm start -- --port 5173 --clearScreen=false\"",
+    "test:e2e:remote-config": "bun run build:vite && concurrently --kill-others --success first \"sh packages/e2e-remote-config/remote-config-test.sh\" \"bun run start -- --port 5173 --clearScreen=false\"",
+    "test:e2e:remote-config:staging": "bun run build:vite && concurrently --kill-others --success first \"sh packages/e2e-remote-config/remote-config-test-staging.sh\" \"bun run start -- --port 5173 --clearScreen=false\"",
     "test:playwright": "lerna run test:playwright --stream",
     "test:playwright:ui": "playwright test --ui",
     "test:playwright:debug": "playwright test --debug",
@@ -52,6 +49,11 @@
     "@commitlint/config-conventional": "^17.3.0",
     "@nx/workspace": "^21.2.1",
     "@playwright/test": "1.55.0",
+    "@rollup/plugin-commonjs": "^23.0.4",
+    "@rollup/plugin-json": "5.0.0",
+    "@rollup/plugin-node-resolve": "^15.0.1",
+    "@rollup/plugin-replace": "^6.0.1",
+    "@rollup/plugin-typescript": "^10.0.1",
     "@types/jest": "^29.2.4",
     "@types/node": "^18.11.14",
     "@typescript-eslint/eslint-plugin": "^5.46.1",
@@ -80,9 +82,13 @@
     "nx": "^21.2.1",
     "prettier": "^2.8.1",
     "rimraf": "^3.0.2",
+    "rollup": "^2.79.1",
+    "rollup-plugin-execute": "^1.1.1",
+    "rollup-plugin-gzip": "^3.1.0",
+    "rollup-plugin-sourcemaps": "^0.6.3",
+    "rollup-plugin-terser": "^7.0.2",
     "source-map": "^0.7.4",
     "ts-jest": "^29.0.3",
-    "tslib": "^2.4.1",
     "typedoc": "^0.23.22",
     "typescript": "^4.9.4",
     "vite": "^6.3.4",
@@ -97,11 +103,9 @@
   "dependencies": {
     "tslib": "^2.4.1"
   },
-  "packageManager": "pnpm@10.26.1+sha512.664074abc367d2c9324fdc18037097ce0a8f126034160f709928e9e9f95d98714347044e5c3164d65bd5da6c59c6be362b107546292a8eecb7999196e5ce58fa",
-  "pnpm": {
-    "overrides": {
-      "baseline-browser-mapping": "2.10.25",
-      "typescript": "^4.9.4"
-    }
+  "packageManager": "bun@1.3.14",
+  "overrides": {
+    "baseline-browser-mapping": "2.10.25",
+    "typescript": "^4.9.4"
   }
 }

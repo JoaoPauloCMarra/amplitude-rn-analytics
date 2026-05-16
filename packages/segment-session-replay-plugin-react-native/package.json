@@ -29,15 +29,15 @@
   },
   "scripts": {
     "build": "bob build",
-    "fix": "pnpm fix:eslint & pnpm fix:prettier",
+    "fix": "bun run fix:eslint & bun run fix:prettier",
     "fix:eslint": "eslint '{src,test}/**/*.ts' --fix",
     "fix:prettier": "prettier --write \"{src,test}/**/*.ts\"",
-    "lint": "pnpm lint:prettier && pnpm lint:eslint",
+    "lint": "bun run lint:prettier && bun run lint:eslint",
     "lint:eslint": "eslint '{src,test}/**/*.ts'",
     "lint:prettier": "prettier --check \"{src,test}/**/*.ts\"",
     "test": "jest",
     "typecheck": "tsc -p ./tsconfig.json",
-    "version": "pnpm version-file && pnpm build",
+    "version": "bun run version-file && bun run build",
     "version-file": "node -p \"'export const VERSION = \\'' + require('./package.json').version + '\\';'\" > src/version.ts",
     "typescript": "tsc --noEmit"
   },

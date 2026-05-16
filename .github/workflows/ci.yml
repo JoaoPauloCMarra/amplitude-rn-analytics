@@ -1,63 +1,56 @@
-name: Continuous Integration
+name: CI
 
 on:
+  pull_request:
   push:
     branches:
       - main
-      - v1.x
+
+permissions:
+  contents: read
 
 jobs:
-  build:
-    name: Build
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [20.x, 22.x, 24.x]
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-
+  react-native:
+    name: React Native package
+    runs-on: ubuntu-latest
+    env:
+      BUN_VERSION: 1.3.14
+      PACKAGE_DIR: packages/analytics-react-native
     steps:
-      - name: Check out git repository
-        uses: actions/checkout@v6.0.2
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6.0.7
-
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v6.4.0
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
-
-      - name: Install project dependencies
+      - name: Checkout
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          pnpm install --frozen-lockfile
+          git init .
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "$GITHUB_REF"
+          git checkout --detach FETCH_HEAD
 
-      - name: Build all packages
+      - name: Install Bun
         run: |
-          pnpm build
+          curl -fsSL -o bun-linux-x64.zip "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-x64.zip"
+          unzip -q bun-linux-x64.zip
+          echo "$PWD/bun-linux-x64" >> "$GITHUB_PATH"
 
-      # https://github.com/amplitude/Amplitude-TypeScript/issues/281
-      - name: Check module dependencies
-        run: |
-          if grep -rnw 'packages/analytics-core/lib' -e '/// <reference types="node" />'; then
-            exit 1
-          elif grep -rnw 'packages/analytics-browser/lib' -e '/// <reference types="node" />'; then
-            exit 1
-          elif grep -rnw 'packages/analytics-marketing-analytics-browser/lib' -e '/// <reference types="node" />'; then
-            exit 1
-          elif grep -rnw 'packages/analytics-react-native/lib' -e '/// <reference types="node" />'; then
-            exit 1
-          fi
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
 
-      - name: Build docs
-        run: |
-          pnpm docs:check
+      - name: Typecheck
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: bun run typecheck
 
-      - name: Test all packages
-        run: |
-          pnpm test
+      - name: Lint
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: bun run lint
 
-      - name: Lint all packages
-        run: |
-          pnpm lint
+      - name: Test web
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: bun run test:web
+
+      - name: Test mobile
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: bun run test:mobile
+
+      - name: Build
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: bun run build

@@ -19,9 +19,9 @@
     "web-vitals": "^3.1.0"
   },
   "scripts": {
-    "buildSDK": "cd ../../../analytics-browser && yarn build",
+    "buildSDK": "cd ../../../analytics-browser && bun run build",
     "installSDK": "cp ../../../analytics-browser/lib/scripts/amplitude-min.js ./public/amplitude.js",
-    "start:dev": "yarn buildSDK && yarn installSDK && yarn start",
+    "start:dev": "bun run buildSDK && bun run installSDK && bun run start",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",

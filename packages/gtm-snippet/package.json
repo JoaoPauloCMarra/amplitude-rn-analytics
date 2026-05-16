@@ -7,10 +7,10 @@
     "tag": "latest"
   },
   "scripts": {
-    "build": "pnpm build:template && pnpm build:bundle",
+    "build": "bun run build:template && bun run build:bundle",
     "build:bundle": "rollup --config rollup.config.js",
     "build:template": "node ./scripts/build-snippet.js",
-    "prepublishOnly": "pnpm build",
+    "prepublishOnly": "bun run build",
     "publish:s3": "node ./scripts/upload-to-s3.js",
     "version": "node ./scripts/version.js"
   },
