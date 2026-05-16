@@ -86,7 +86,14 @@ jobs:
           echo "$PWD/bun-linux-x64" >> "$GITHUB_PATH"
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Build workspace dependencies
+        run: |
+          cd packages/analytics-types
+          bun run build
+          cd ../analytics-core
+          bun run build
 
       - name: Validate release version
         working-directory: ${{ env.PACKAGE_DIR }}
