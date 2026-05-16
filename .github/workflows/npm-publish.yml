@@ -29,13 +29,24 @@ jobs:
     env:
       EXPECTED_PACKAGE_NAME: amplitude-rn-analytics
       PACKAGE_DIR: packages/analytics-react-native
-      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.releaseTag }}
-      RELEASE_PRERELEASE: ${{ github.event.release.prerelease || inputs.prerelease }}
     steps:
       - name: Checkout release tag
         uses: actions/checkout@v6.0.2
         with:
-          ref: ${{ env.RELEASE_TAG || github.ref_name }}
+          ref: ${{ github.ref_name }}
+
+      - name: Resolve release inputs
+        run: |
+          node <<'NODE' >> "$GITHUB_ENV"
+          const event = require(process.env.GITHUB_EVENT_PATH);
+          if (process.env.GITHUB_EVENT_NAME === 'release') {
+            console.log(`RELEASE_TAG=${event.release.tag_name}`);
+            console.log(`RELEASE_PRERELEASE=${String(event.release.prerelease)}`);
+          } else {
+            console.log(`RELEASE_TAG=${event.inputs.releaseTag}`);
+            console.log(`RELEASE_PRERELEASE=${event.inputs.prerelease}`);
+          }
+          NODE
 
       - name: Setup Node
         uses: actions/setup-node@v6.4.0
