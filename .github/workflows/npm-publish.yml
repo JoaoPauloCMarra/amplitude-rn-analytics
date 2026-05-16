@@ -29,11 +29,13 @@ jobs:
     env:
       EXPECTED_PACKAGE_NAME: amplitude-rn-analytics
       PACKAGE_DIR: packages/analytics-react-native
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.releaseTag }}
+      RELEASE_PRERELEASE: ${{ github.event.release.prerelease || inputs.prerelease }}
     steps:
       - name: Checkout release tag
         uses: actions/checkout@v6.0.2
         with:
-          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref_name }}
+          ref: ${{ env.RELEASE_TAG || github.ref_name }}
 
       - name: Setup Node
         uses: actions/setup-node@v6.4.0
@@ -61,7 +63,6 @@ jobs:
         run: |
           PACKAGE_NAME=$(node -p "require('./package.json').name")
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
-          RELEASE_TAG="${{ github.event_name == 'release' && github.event.release.tag_name || github.event.inputs.releaseTag }}"
           RELEASE_VERSION="${RELEASE_TAG#v}"
 
           if [ "$PACKAGE_NAME" != "$EXPECTED_PACKAGE_NAME" ]; then
@@ -86,7 +87,7 @@ jobs:
 
       - name: Select npm dist-tag
         run: |
-          if [ "${{ github.event_name == 'release' && github.event.release.prerelease || github.event.inputs.prerelease }}" = "true" ]; then
+          if [ "$RELEASE_PRERELEASE" = "true" ]; then
             echo "NPM_DIST_TAG=next" >> "$GITHUB_ENV"
           else
             echo "NPM_DIST_TAG=latest" >> "$GITHUB_ENV"
@@ -114,4 +115,4 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
           echo "Manual workflow_dispatch is dry-run only."
-          echo "Create GitHub Release ${{ github.event.inputs.releaseTag }} to publish with dist-tag $NPM_DIST_TAG."
+          echo "Create GitHub Release $RELEASE_TAG to publish with dist-tag $NPM_DIST_TAG."
