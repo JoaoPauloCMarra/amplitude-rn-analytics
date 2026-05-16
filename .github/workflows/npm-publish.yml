@@ -31,9 +31,22 @@ jobs:
       PACKAGE_DIR: packages/analytics-react-native
     steps:
       - name: Checkout release tag
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node <<'NODE' > /tmp/checkout-ref
+          const event = require(process.env.GITHUB_EVENT_PATH);
+          if (process.env.GITHUB_EVENT_NAME === 'release') {
+            console.log(`refs/tags/${event.release.tag_name}`);
+          } else {
+            console.log(process.env.GITHUB_REF);
+          }
+          NODE
+          CHECKOUT_REF=$(cat /tmp/checkout-ref)
+          git init .
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "$CHECKOUT_REF"
+          git checkout --detach FETCH_HEAD
 
       - name: Resolve release inputs
         run: |
@@ -48,14 +61,16 @@ jobs:
           }
           NODE
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          registry-url: https://registry.npmjs.org
+      - name: Install Node 24
+        run: |
+          NODE_ARCHIVE=$(curl -fsSL https://nodejs.org/dist/latest-v24.x/SHASUMS256.txt | awk '/linux-x64.tar.xz$/ {print $2; exit}')
+          curl -fsSLO "https://nodejs.org/dist/latest-v24.x/${NODE_ARCHIVE}"
+          tar -xJf "$NODE_ARCHIVE"
+          echo "$PWD/${NODE_ARCHIVE%.tar.xz}/bin" >> "$GITHUB_PATH"
 
       - name: Setup pnpm
         run: |
+          npm config set registry https://registry.npmjs.org
           corepack enable
           corepack prepare pnpm@10.26.1 --activate
 
