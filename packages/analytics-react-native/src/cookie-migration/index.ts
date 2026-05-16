@@ -2,9 +2,11 @@ import { UserSession, ReactNativeOptions, getOldCookieName } from '@amplitude/an
 import { createCookieStorage, getDefaultConfig, getTopLevelDomain } from '../config';
 
 export const parseOldCookies = async (apiKey: string, options?: ReactNativeOptions): Promise<UserSession> => {
+  const disableCookies = options?.disableCookies ?? getDefaultConfig().disableCookies;
   const storage = await createCookieStorage<string>({
     ...options,
-    domain: options?.disableCookies ? '' : options?.domain ?? (await getTopLevelDomain()),
+    disableCookies,
+    domain: disableCookies ? '' : options?.domain ?? (await getTopLevelDomain()),
   });
   const oldCookieName = getOldCookieName(apiKey);
   const cookies = await storage.getRaw(oldCookieName);
@@ -37,7 +39,7 @@ export const parseTime = (num: string) => {
 };
 
 export const decode = (value?: string): string | undefined => {
-  if (!atob || !escape || !value) {
+  if (typeof atob !== 'function' || typeof escape !== 'function' || !value) {
     return undefined;
   }
   try {

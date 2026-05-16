@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       releaseTag:
-        description: Release tag to validate, for example v1.5.57
+        description: Release tag to validate, for example v1.5.58
         required: true
       prerelease:
         description: Publish with the next dist-tag instead of latest
@@ -26,36 +26,53 @@ jobs:
   publish:
     name: Publish amplitude-rn-analytics
     runs-on: ubuntu-latest
+    env:
+      EXPECTED_PACKAGE_NAME: amplitude-rn-analytics
+      PACKAGE_DIR: packages/analytics-react-native
     steps:
       - name: Checkout release tag
         uses: actions/checkout@v6.0.2
         with:
-          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref }}
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref_name }}
 
       - name: Setup Node
         uses: actions/setup-node@v6.4.0
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
       - name: Setup pnpm
         run: |
           corepack enable
           corepack prepare pnpm@10.26.1 --activate
 
-      - name: Update npm for trusted publishing
-        run: npm install -g npm@11.13.0
+      - name: Verify npm trusted publishing toolchain
+        run: |
+          node -e "const [major, minor] = process.versions.node.split('.').map(Number); if (major < 22 || (major === 22 && minor < 14)) throw new Error('Node 22.14.0 or newer is required for npm trusted publishing')"
+          npm --version
+          node -e "const npmVersion = require('child_process').execFileSync('npm', ['--version'], { encoding: 'utf8' }).trim().split('.').map(Number); if (npmVersion[0] < 11 || (npmVersion[0] === 11 && npmVersion[1] < 5)) throw new Error('npm 11.5.1 or newer is required for trusted publishing')"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Validate release version
-        working-directory: packages/analytics-react-native
+        working-directory: ${{ env.PACKAGE_DIR }}
         run: |
           PACKAGE_NAME=$(node -p "require('./package.json').name")
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
           RELEASE_TAG="${{ github.event_name == 'release' && github.event.release.tag_name || github.event.inputs.releaseTag }}"
           RELEASE_VERSION="${RELEASE_TAG#v}"
+
+          if [ "$PACKAGE_NAME" != "$EXPECTED_PACKAGE_NAME" ]; then
+            echo "Refusing to publish $PACKAGE_NAME from $PACKAGE_DIR; expected $EXPECTED_PACKAGE_NAME"
+            exit 1
+          fi
+
+          if [ "$RELEASE_TAG" != "v$RELEASE_VERSION" ]; then
+            echo "Release tag must use v<version> format. Received: $RELEASE_TAG"
+            exit 1
+          fi
 
           if [ "$PACKAGE_VERSION" != "$RELEASE_VERSION" ]; then
             echo "Release tag v$RELEASE_VERSION does not match $PACKAGE_NAME@$PACKAGE_VERSION"
@@ -75,19 +92,26 @@ jobs:
             echo "NPM_DIST_TAG=latest" >> "$GITHUB_ENV"
           fi
 
-      - name: Build package
-        working-directory: packages/analytics-react-native
+      - name: Verify package
+        working-directory: ${{ env.PACKAGE_DIR }}
         run: |
-          npm run build:esm -w @amplitude/analytics-core
-          npm run build:es5 -w @amplitude/analytics-core
           npm run typecheck
+          npm run lint
+          npm run test:web
+          npm run test:mobile
           npm run build
 
-      - name: Publish package
-        working-directory: packages/analytics-react-native
+      - name: Pack dry run
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: npm publish --access public --tag "$NPM_DIST_TAG" --dry-run
+
+      - name: Publish package with npm trusted publishing
+        if: ${{ github.event_name == 'release' }}
+        working-directory: ${{ env.PACKAGE_DIR }}
+        run: npm publish --access public --tag "$NPM_DIST_TAG"
+
+      - name: Manual dry-run summary
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            npm publish --access public --tag "$NPM_DIST_TAG" --dry-run
-          else
-            npm publish --access public --tag "$NPM_DIST_TAG"
-          fi
+          echo "Manual workflow_dispatch is dry-run only."
+          echo "Create GitHub Release ${{ github.event.inputs.releaseTag }} to publish with dist-tag $NPM_DIST_TAG."

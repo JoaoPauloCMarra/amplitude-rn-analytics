@@ -23,7 +23,7 @@ describe('config', () => {
         cookieSameSite: 'Lax',
         cookieSecure: false,
         cookieUpgrade: true,
-        disableCookies: false,
+        disableCookies: true,
         domain: '',
         flushIntervalMillis: 1000,
         flushMaxRetries: 5,
@@ -111,7 +111,7 @@ describe('config', () => {
         cookieSecure: false,
         cookieUpgrade: true,
         _deviceId: someUUID,
-        disableCookies: false,
+        disableCookies: true,
         domain: '',
         flushIntervalMillis: 1000,
         flushMaxRetries: 5,
@@ -280,14 +280,21 @@ describe('config', () => {
      */
     if (isWeb()) {
       test('should return cookies', async () => {
-        const storage = await Config.createCookieStorage();
+        const storage = await Config.createCookieStorage({ disableCookies: false });
         expect(storage).toBeInstanceOf(core.CookieStorage);
       });
     }
 
     test('should use return storage', async () => {
+      const storage = await Config.createCookieStorage();
+      expect(storage).toBeInstanceOf(LocalStorageModule.LocalStorage);
+    });
+
+    test('should not probe cookie storage when cookies are disabled', async () => {
+      const cookiesConstructor = jest.spyOn(core, 'CookieStorage');
       const storage = await Config.createCookieStorage({ disableCookies: true });
       expect(storage).toBeInstanceOf(LocalStorageModule.LocalStorage);
+      expect(cookiesConstructor).not.toHaveBeenCalled();
     });
 
     test('should use memory', async () => {
@@ -309,7 +316,7 @@ describe('config', () => {
         reset: async () => undefined,
         getRaw: async () => undefined,
       });
-      const storage = await Config.createCookieStorage();
+      const storage = await Config.createCookieStorage({ disableCookies: false });
       expect(storage).toBeInstanceOf(core.MemoryStorage);
       expect(cookiesConstructor).toHaveBeenCalledTimes(1);
       expect(localStorageConstructor).toHaveBeenCalledTimes(1);

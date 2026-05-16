@@ -13,10 +13,16 @@ describe('cookie-migration', () => {
 
   describe('parseOldCookies', () => {
     test('should return default values', async () => {
-      const cookies = await parseOldCookies(API_KEY, { disableCookies: true });
+      const cookies = await parseOldCookies(API_KEY);
       expect(cookies).toEqual({
         optOut: false,
       });
+    });
+
+    test('should not probe cookie storage by default', async () => {
+      const cookiesConstructor = jest.spyOn(CookieStorage.prototype, 'isEnabled');
+      await parseOldCookies(API_KEY);
+      expect(cookiesConstructor).not.toHaveBeenCalled();
     });
 
     test('should handle non-persistent storage', async () => {
@@ -47,6 +53,7 @@ describe('cookie-migration', () => {
         document.cookie = `${oldCookieName}=deviceId.${encodedUserId}..${time}.${time}`;
         const cookies = await parseOldCookies(API_KEY, {
           cookieUpgrade: true,
+          disableCookies: false,
         });
         expect(cookies).toEqual({
           deviceId: 'deviceId',
@@ -70,6 +77,7 @@ describe('cookie-migration', () => {
         document.cookie = `${oldCookieName}=deviceId.${encodedUserId}..${time}.${time}`;
         const cookies = await parseOldCookies(API_KEY, {
           cookieUpgrade: false,
+          disableCookies: false,
         });
         expect(cookies).toEqual({
           deviceId: 'deviceId',
@@ -94,6 +102,7 @@ describe('cookie-migration', () => {
 
         const cookies = await parseOldCookies(API_KEY, {
           cookieUpgrade: false,
+          disableCookies: false,
         });
 
         expect(cookies.optOut).toBe(false);
@@ -124,6 +133,23 @@ describe('cookie-migration', () => {
 
     test('should handle undefined input', () => {
       expect(decode(undefined)).toBe(undefined);
+    });
+
+    test('should handle missing atob', () => {
+      const originalAtob = globalThis.atob;
+      Object.defineProperty(globalThis, 'atob', {
+        configurable: true,
+        value: undefined,
+      });
+
+      try {
+        expect(decode('YXNkZg==')).toBe(undefined);
+      } finally {
+        Object.defineProperty(globalThis, 'atob', {
+          configurable: true,
+          value: originalAtob,
+        });
+      }
     });
   });
 

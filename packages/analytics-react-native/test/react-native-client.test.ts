@@ -28,9 +28,7 @@ describe('react-native-client', () => {
     if (typeof document !== 'undefined') {
       document.cookie = 'AMP_API_KEY=null; expires=-1';
     }
-    if (!isWeb()) {
-      await new LocalStorage().reset();
-    }
+    await new LocalStorage().reset();
   });
 
   describe('init', () => {

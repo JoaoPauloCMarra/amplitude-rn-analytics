@@ -39,7 +39,7 @@ export const getDefaultConfig = () => {
     cookieSecure: false,
     cookieStorage,
     cookieUpgrade: true,
-    disableCookies: false,
+    disableCookies: true,
     domain: '',
     sessionTimeout: 5 * 60 * 1000,
     storageProvider: new MemoryStorage<Event[]>(),
@@ -196,8 +196,9 @@ export const useReactNativeConfig = async (
   const defaultConfig = getDefaultConfig();
 
   // create cookie storage
-  const domain = options?.disableCookies ? '' : options?.domain ?? (await getTopLevelDomain());
-  const cookieStorage = await createCookieStorage<UserSession>({ ...options, domain });
+  const disableCookies = options?.disableCookies ?? defaultConfig.disableCookies;
+  const domain = disableCookies ? '' : options?.domain ?? (await getTopLevelDomain());
+  const cookieStorage = await createCookieStorage<UserSession>({ ...options, disableCookies, domain });
   const previousCookies = await cookieStorage.get(getCookieName(apiKey));
   const queryParams = getQueryParams();
 
@@ -267,13 +268,22 @@ export const createCookieStorage = async <T>(
 };
 
 const createFlexibleStorage = async <T>(options: ReactNativeOptions): Promise<Storage<T>> => {
-  let storage: Storage<T> = new CookieStorage({
+  let storage: Storage<T>;
+  if (options.disableCookies) {
+    storage = new LocalStorage();
+    if (!(await storage.isEnabled())) {
+      storage = new MemoryStorage();
+    }
+    return storage;
+  }
+
+  storage = new CookieStorage({
     domain: options.domain,
     expirationDays: options.cookieExpiration,
     sameSite: options.cookieSameSite,
     secure: options.cookieSecure,
   });
-  if (options.disableCookies || !(await storage.isEnabled())) {
+  if (!(await storage.isEnabled())) {
     storage = new LocalStorage();
     if (!(await storage.isEnabled())) {
       storage = new MemoryStorage();
