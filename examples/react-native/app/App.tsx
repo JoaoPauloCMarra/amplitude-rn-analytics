@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo} from 'react';
+import React, {useCallback, useEffect, useMemo} from 'react';
 import type {JSX} from 'react';
 import {
   Button,
@@ -46,7 +46,7 @@ function App(): JSX.Element {
   );
 
   useEffect(() => {
-    void init('API_KEY', 'example_user_id', {
+    init('API_KEY', 'example_user_id', {
       logLevel: Types.LogLevel.Verbose,
     }).promise.catch((error: unknown) => {
       showToast(String(error), 'error');
@@ -90,11 +90,15 @@ function App(): JSX.Element {
           <Text style={[styles.title, textStyle]}>Test Amplitude App</Text>
           <Button
             title="Track Event"
-            onPress={() => void trackEventAndShowToast('test_event')}
+            onPress={() => {
+              trackEventAndShowToast('test_event');
+            }}
           />
           <Button
             title="Track Identify"
-            onPress={() => void trackIdentifyAndShowToast()}
+            onPress={() => {
+              trackIdentifyAndShowToast();
+            }}
           />
         </View>
       </ScrollView>

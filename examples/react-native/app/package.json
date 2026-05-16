@@ -10,7 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "amplitude-rn-analytics": "file:../../../packages/analytics-react-native",
+    "amplitude-rn-analytics": "workspace:*",
     "react": "18.2.0",
     "react-native": "0.74.1",
     "react-native-toast-message": "^2.2.0"
